@@ -707,9 +707,13 @@ const device = await navigator.bluetooth.requestDevice({
     optionalServices: ['19b10000-e8f2-537e-4f6c-d104768a1214']
 });
 
-      const server = await device.gatt.connect();
-    const service = await server.getPrimaryService('19b10000-e8f2-537e-4f6c-d104768a1214');
+  const server = await device.gatt.connect();
     
+    // --- AGGIUNTA: Diamo tempo alla schedina di "stabilizzarsi" ---
+    await new Promise(r => setTimeout(r, 1000)); 
+    // -------------------------------------------------------------
+
+    const service = await server.getPrimaryService('19b10000-e8f2-537e-4f6c-d104768a1214');
     // 1. LA RIGA MANCANTE: Otteniamo il canale dati (UUID corretto)
     const bleCharacteristic = await service.getCharacteristic('19b10001-e8f2-537e-4f6c-d104768a1214');
     

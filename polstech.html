@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BioTennis - App</title>
+    <style>
+        /* --- SFONDO E SETUP GENERALE --- */
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: #000000;
+            display: flex; justify-content: center; align-items: center;
+            overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        #splash-container { position: relative; width: 100%; height: 100%; z-index: 50; }
+        .scene-wrapper { position: absolute; top: 50%; left: 50%; width: 0; height: 0; transform: scale(0.75); }
+
+        .ball-wrapper { position: absolute; width: 32px; height: 32px; margin-left: -16px; margin-top: -16px; top: 0; left: 0; z-index: 2; animation: ball-physics 5s forwards; }
+        .tennis-ball { width: 100%; height: 100%; animation: ball-spin 5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+
+        .racket-wrapper { position: absolute; width: 300px; height: 150px; margin-left: -75px; margin-top: -75px; top: 0; left: 0; z-index: 1; transform-origin: 260px 75px; animation: human-kinematics 5s forwards; }
+
+        /* --- FISICA SPLASH SCREEN --- */
+        @keyframes ball-physics {
+            0% { transform: translate(0, -800px) scale(1); animation-timing-function: cubic-bezier(0.55, 0.085, 0.68, 0.53); }
+            18% { transform: translate(0, 0px) scale(1.05, 0.9); animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1); }  
+            33% { transform: translate(0, -350px) scale(1); animation-timing-function: cubic-bezier(0.55, 0.085, 0.68, 0.53); } 
+            48% { transform: translate(0, 0px) scale(1.05, 0.9); animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1); }  
+            66% { transform: translate(0, -650px) scale(1); animation-timing-function: cubic-bezier(0.1, 0.8, 0.2, 1); } 
+            70% { transform: translate(0, -660px) scale(1); animation-timing-function: cubic-bezier(0.55, 0.085, 0.68, 0.53); } 
+            82% { transform: translate(20px, -200px) scale(0.95, 1.1); animation-timing-function: linear; } 
+            83% { transform: translate(140px, -140px) scaleX(2.2) scaleY(0.3); } 
+            95% { transform: translate(150vw, 50px) scaleX(2.5) scaleY(0.2); } 
+            100% { transform: translate(150vw, 50px) scale(1); }
+        }
+        @keyframes ball-spin { 0% { transform: rotate(0deg); } 80% { transform: rotate(1080deg); } 100% { transform: rotate(3500deg); } }
+        @keyframes human-kinematics {
+            0%, 15%, 18%, 28%, 48%, 58% { transform: translate(0px, 0px) rotate(0deg); }
+            19% { transform: translate(-3px, -15px) rotate(-9deg); animation-timing-function: ease-out; } 
+            21% { transform: translate(1.5px, 5px) rotate(3deg); animation-timing-function: ease-in-out; } 
+            24% { transform: translate(-0.5px, -2px) rotate(-1deg); } 
+            50% { transform: translate(-5px, -22px) rotate(-12deg); animation-timing-function: ease-out; } 
+            52% { transform: translate(2px, 8px) rotate(4deg); animation-timing-function: ease-in-out; } 
+            68% { transform: translate(-222px, -74px) rotate(-70deg); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+            82% { transform: translate(-34px, -19px) rotate(45deg); animation-timing-function: ease-out; } 
+            95%, 100% { transform: translate(-204px, 292px) rotate(130deg); }
+        }
+
+        /* --- UI APP E NAVIGAZIONE --- */
+        #home-screen { display: none; width: 100%; height: 100%; position: relative; }
+        .content-area { width: 100%; height: calc(100% - 110px); overflow-y: auto; padding: 40px 20px; box-sizing: border-box; color: #fff; }
+        .tab-pane { display: none; width: 100%; min-height: 100%; animation: fadeInTab 0.3s ease forwards; padding-bottom: 50px;}
+        .tab-pane.active { display: block; }
+        #tab-premium.active { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: calc(100vh - 220px); }
+        @keyframes fadeInTab { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .header h1 { margin: 0; font-size: 1.6rem; letter-spacing: -0.5px; font-weight: 800; text-transform: uppercase; }
+
+        /* --- WIDGET BLUETOOTH --- */
+        .ble-widget { background: #0a0b0e; border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 15px; cursor: pointer; border: 1px solid #333; transition: all 0.3s ease; margin-bottom: 20px; }
+        .ble-widget.disconnected { border-color: #ff4d4d; box-shadow: 0 0 15px rgba(255, 77, 77, 0.1); }
+        .ble-widget.connected { border-color: #CCFF00; box-shadow: 0 0 15px rgba(204, 255, 0, 0.1); }
+        .ble-icon { width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; transition: all 0.3s ease; }
+        .ble-widget.disconnected .ble-icon { background: rgba(255, 77, 77, 0.2); color: #ff4d4d; animation: pulse-red 2s infinite; }
+        .ble-widget.connected .ble-icon { background: rgba(204, 255, 0, 0.2); color: #CCFF00; }
+        @keyframes pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); } 70% { box-shadow: 0 0 0 10px rgba(255, 77, 77, 0); } 0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.4); } }
+        .ble-info { display: flex; flex-direction: column; flex: 1; }
+        .ble-title { font-size: 1rem; font-weight: 700; margin: 0; color: #fff; }
+        .ble-status { font-size: 0.75rem; color: #888; margin-top: 4px; font-weight: 600; text-transform: uppercase; }
+        .ble-widget.disconnected .ble-status { color: #ff4d4d; }
+        .ble-widget.connected .ble-status { color: #CCFF00; }
+        .ble-battery { display: none; align-items: center; gap: 4px; font-size: 0.8rem; font-weight: 700; color: #CCFF00; }
+        .ble-widget.connected .ble-battery { display: flex; }
+        .battery-icon { width: 22px; height: 10px; border: 2px solid #CCFF00; border-radius: 3px; position: relative; padding: 1px; box-sizing: border-box;}
+        .battery-icon::after { content: ''; position: absolute; right: -4px; top: 1px; width: 2px; height: 4px; background: #CCFF00; border-radius: 0 2px 2px 0; }
+        .battery-level { width: 84%; height: 100%; background: #CCFF00; border-radius: 1px; }
+
+        /* --- STILI GENERICI WIDGET --- */
+        .dashboard-widget { background: #0a0b0e; border-radius: 20px; border: 1px solid #1a1c22; padding: 20px; margin-bottom: 20px; }
+        .widget-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .widget-title { font-size: 0.85rem; color: #8a8f9c; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .stat-box { background: rgba(255,255,255,0.03); padding: 14px; border-radius: 12px; display: flex; flex-direction: column; gap: 4px; border: 1px solid rgba(255,255,255,0.05); }
+        .stat-label { font-size: 0.65rem; color: #7a7f8c; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-value { font-size: 1.3rem; font-weight: 800; color: #ffffff; display: flex; align-items: baseline; gap: 4px; }
+        .stat-unit { font-size: 0.7rem; color: #CCFF00; font-weight: 600; }
+        .stat-highlight { color: #CCFF00; } 
+
+        /* --- OBIETTIVI SETTIMANALI (QUESTS) --- */
+        .goal-item { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; margin-bottom: 12px; transition: all 0.3s ease;}
+        .goal-item.completed { border-color: #b066ff; background: rgba(176,102,255,0.05); box-shadow: 0 0 15px rgba(176,102,255,0.1); }
+        .goal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .goal-title { font-size: 0.8rem; color: #fff; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+        .goal-reward { font-size: 0.75rem; color: #CCFF00; font-weight: 800; background: rgba(204,255,0,0.1); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(204,255,0,0.3); }
+        .goal-bar-bg { width: 100%; height: 6px; background: #222; border-radius: 3px; overflow: hidden; margin-bottom: 10px; }
+        .goal-bar-fill { height: 100%; background: linear-gradient(90deg, #5c258d, #b066ff); width: 0%; border-radius: 3px; transition: width 1s ease-in-out; }
+        .goal-footer { display: flex; justify-content: space-between; align-items: center; }
+        .goal-progress-text { font-size: 0.7rem; color: #888; font-weight: 700; }
+        .goal-claim-btn { background: #333; color: #666; border: none; padding: 6px 14px; border-radius: 6px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; cursor: not-allowed; transition: all 0.3s; }
+        .goal-claim-btn.ready { background: #b066ff; color: #fff; cursor: pointer; box-shadow: 0 0 10px rgba(176,102,255,0.4); border: 1px solid #c999ff; }
+        .goal-claim-btn.ready:active { transform: scale(0.95); }
+        .goal-claim-btn.claimed { background: transparent; color: #CCFF00; border: 1px solid #CCFF00; cursor: default; box-shadow: none; }
+
+        /* --- TENSION RADAR CON ALLARME CREEP --- */
+        .tension-container { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+        .tension-circle { position: relative; width: 75px; height: 75px; }
+        .tension-info { flex: 1; margin-left: 20px; }
+        .tension-btn { background: transparent; border: 1px solid #CCFF00; color: #CCFF00; border-radius: 8px; padding: 8px 12px; font-weight: 800; cursor: pointer; font-size: 0.7rem; text-transform: uppercase; transition: 0.3s; width: 100%; text-align: center; margin-top: 8px; }
+        .tension-btn:active { background: #CCFF00; color: #000; }
+        .tension-btn:disabled { border-color: #555; color: #888; cursor: not-allowed; }
+        .creep-alert { background: rgba(255, 77, 77, 0.1); border-left: 3px solid #ff4d4d; padding: 10px 12px; border-radius: 8px; font-size: 0.65rem; color: #ff4d4d; display: flex; align-items: flex-start; gap: 8px; margin-top: 15px; line-height: 1.4; animation: fadeInTab 0.3s ease; }
+        .creep-alert svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px;}
+        .tension-instructions { max-height: 0; opacity: 0; overflow: hidden; transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); font-size: 0.75rem; color: #888; margin-top: 0; }
+        .tension-instructions.active { max-height: 150px; opacity: 1; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #333; }
+        .tension-instructions p { margin: 0; line-height: 1.5; }
+        .tension-instructions strong { color: #CCFF00; }
+
+        /* --- MOMENTUM CHART WIDGET --- */
+        .momentum-sparkline { position: relative; width: 100%; height: 50px; margin: 10px 0; padding: 0 10px; box-sizing: border-box;}
+        .momentum-insight { margin-top: 15px; font-size: 0.75rem; color: #ccc; border-left: 2px solid #CCFF00; padding-left: 10px; line-height: 1.4; }
+
+        /* --- WIDGET ARM BATTERY --- */
+        .arm-battery-container { background: #111216; padding: 15px; border-radius: 12px; border: 1px solid #222; margin-top: 10px; }
+        .arm-bar-bg { width: 100%; height: 14px; background: #222; border-radius: 8px; overflow: hidden; margin: 12px 0 16px 0; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);}
+        .arm-bar-fill { height: 100%; background: linear-gradient(90deg, #ff4d4d, #ffcc00, #CCFF00); width: 65%; border-radius: 8px; box-shadow: 0 0 10px rgba(204, 255, 0, 0.4); transition: width 1s ease-in-out;}
+        .arm-status-text { font-size: 0.75rem; color: #888; line-height: 1.4; }
+        .arm-status-text strong { color: #fff; }
+
+        /* --- SELETTORE GAME / WORKOUT --- */
+        .stacked-modes { display: flex; flex-direction: column; gap: 16px; margin-bottom: 35px; }
+        .mode-card-btn { background: #0a0b0e; border: 1px solid #1a1c22; border-radius: 16px; padding: 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.3s ease; }
+        .mode-card-btn.active-game { border-color: #CCFF00; box-shadow: 0 0 20px rgba(204,255,0,0.1); background: #111218; }
+        .mode-card-btn.active-workout { border-color: #00e5ff; box-shadow: 0 0 20px rgba(0,229,255,0.1); background: #111218; }
+        .mode-text-left h3 { margin: 0 0 6px 0; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; }
+        .mode-text-left p { margin: 0; font-size: 0.75rem; color: #888; }
+        .active-game .mode-text-left h3 { color: #CCFF00; }
+        .active-workout .mode-text-left h3 { color: #00e5ff; }
+
+        /* --- VISTE MODALITA' E TIMER DI AVVIO --- */
+        .view-section { display: none; animation: fadeIn 0.4s ease; margin-bottom: 40px;}
+        .view-section.active { display: block; }
+        
+        #session-loader { display: none; text-align: center; padding: 40px 0; margin-bottom: 40px;}
+        #session-loader-text { font-size: 1.2rem; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
+        .timer-number { font-size: 4.5rem; font-weight: 900; display: block; margin-top: 15px; line-height: 1; }
+
+        .live-match-card, .live-workout-card { border-radius: 16px; background: #050507; padding: 24px; text-align: center; position: relative;}
+        .live-match-card { border: 1px solid #CCFF00; }
+        .live-workout-card { border: 1px solid #00e5ff; }
+        
+        /* SCOREBOARD TENNIS MANUALE & GAMES */
+        .scoreboard { display: flex; justify-content: space-around; align-items: center; margin-bottom: 25px; }
+        .player-score { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .player-name { font-size: 0.7rem; color: #666; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;}
+        .score-controls { display: flex; align-items: center; gap: 10px; }
+        .score-btn { background: #111216; border: 1px solid #333; color: #fff; width: 28px; height: 28px; border-radius: 50%; font-size: 1.2rem; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; padding: 0; line-height: 0; }
+        .score-btn:active { background: #333; }
+        .score-btn.plus { border-color: rgba(204, 255, 0, 0.4); color: #CCFF00; }
+        .score-btn.minus { border-color: rgba(255, 77, 77, 0.4); color: #ff4d4d; }
+        .points { font-size: 4rem; font-weight: 900; line-height: 1; text-align: center; min-width: 80px;}
+        .points.highlight { color: #CCFF00; }
+        .points.normal { color: #ffffff; }
+        .score-divider { display: flex; align-items: center; gap: 8px; font-size: 1.8rem; font-weight: 900; background: #111216; padding: 5px 15px; border-radius: 12px; border: 1px solid #222;}
+        .game-count.highlight { color: #CCFF00; }
+        .game-count.normal { color: #fff; }
+        .score-divider span.dash { color: #555; font-weight: 300; font-size: 1.2rem; }
+        
+        /* WORKOUT HEATMAP E METRICHE */
+        .workout-metrics { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .metric-circle { width: 80px; height: 80px; border-radius: 50%; border: 2px dashed #00e5ff; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .metric-val { font-size: 1.6rem; font-weight: 800; color: #fff; }
+        .metric-lab { font-size: 0.5rem; color: #00e5ff; text-transform: uppercase; }
+        .metric-side { display: flex; flex-direction: column; gap: 10px; }
+        .m-box { background: #111216; padding: 8px 12px; border-radius: 8px; text-align: left; border-left: 3px solid #00e5ff;}
+        .m-val { font-size: 1.1rem; font-weight: 800; color: #fff; }
+        .m-lab { font-size: 0.55rem; color: #666; text-transform: uppercase; }
+        
+        .workout-center-heatmap { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .heatmap-visual-live { position: relative; width: 85px; height: 110px; margin-top: 5px; }
+        .heat-glow-live { position: absolute; width: 45px; height: 50px; border-radius: 50%; top: 30px; left: 20px; filter: blur(4px); animation: pulse-heat 2s infinite alternate; background: radial-gradient(circle, rgba(0,229,255,0.9) 0%, rgba(0,229,255,0.4) 40%, transparent 70%); }
+
+        .voice-commands-help { font-size: 0.65rem; color: #555; background: #111216; padding: 8px 16px; border-radius: 6px; display: inline-block; margin-bottom: 20px;}
+        .btn-end-session { width: 100%; padding: 14px; background: rgba(255, 77, 77, 0.1); border: 1px solid #ff4d4d; color: #ff4d4d; font-weight: 800; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; border-radius: 8px; cursor: pointer; transition: 0.3s; }
+        .btn-end-session:active { background: #ff4d4d; color: #000; }
+
+        /* --- ACCORDION STORICO --- */
+        .section-title { font-size: 1rem; color: #ffffff; margin-bottom: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #222; padding-bottom: 10px; margin-top: 10px;}
+        .history-item { background: #0a0b0e; border: 1px solid #1a1c22; border-radius: 16px; margin-bottom: 12px; overflow: hidden; transition: all 0.3s ease; }
+        .history-summary { padding: 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .history-left { display: flex; flex-direction: column; gap: 4px; }
+        .hist-title { font-weight: 700; font-size: 0.95rem; color: #fff; }
+        .hist-date { font-size: 0.7rem; color: #666; }
+        .hist-icon svg { width: 20px; height: 20px; stroke: #CCFF00; transition: transform 0.3s ease; }
+        .history-details { max-height: 0; opacity: 0; overflow: hidden; transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); background: #050507; }
+        .history-item.expanded { border-color: rgba(204, 255, 0, 0.3); }
+        .history-item.expanded .history-details { max-height: 800px; opacity: 1; padding: 16px; border-top: 1px solid #1a1c22; }
+        .history-item.expanded .hist-icon svg { transform: rotate(180deg); }
+        .heatmap-container { display: flex; flex-direction: column; align-items: center; margin-top: 20px; padding-top: 15px; border-top: 1px dashed #222; }
+        .heatmap-visual { position: relative; width: 100px; height: 130px; margin-top: 10px; }
+        .heat-glow { position: absolute; width: 50px; height: 55px; background: radial-gradient(circle, rgba(204,255,0,0.9) 0%, rgba(204,255,0,0.4) 40%, transparent 70%); border-radius: 50%; top: 35px; left: 25px; filter: blur(5px); animation: pulse-heat 2s infinite alternate; }
+
+        /* --- COMING SOON --- */
+        .coming-soon-text { font-size: 2.2rem; font-weight: 800; letter-spacing: 5px; margin-bottom: 30px; text-transform: uppercase; text-align: center; background: linear-gradient(90deg, #333 0%, #ffffff 40%, #CCFF00 50%, #ffffff 60%, #333 100%); background-size: 300% auto; color: transparent; -webkit-background-clip: text; background-clip: text; animation: cyber-shine 3s linear infinite; filter: drop-shadow(0px 0px 8px rgba(204, 255, 0, 0.25)); }
+        @keyframes cyber-shine { to { background-position: 300% center; } }
+        .coming-soon-icons { display: flex; gap: 20px; align-items: center; justify-content: center; }
+        .coming-soon-icons svg { width: 32px; height: 32px; stroke: #CCFF00; fill: none; stroke-width: 2.2; animation: tech-bounce 1.2s infinite ease-in-out alternate; }
+        .coming-soon-icons svg:nth-child(1) { animation-delay: 0s; } .coming-soon-icons svg:nth-child(2) { animation-delay: 0.3s; } .coming-soon-icons svg:nth-child(3) { animation-delay: 0.6s; }
+        @keyframes tech-bounce { 0% { transform: translateY(0); opacity: 0.4; } 100% { transform: translateY(-10px); opacity: 1; filter: drop-shadow(0 0 10px #CCFF00); } }
+
+        /* --- CARTA ATLETA CON IMMAGINE GENERATA --- */
+        .avatar-card-container { position: relative; width: 100%; max-width: 330px; margin: 0 auto; aspect-ratio: 300 / 450; filter: drop-shadow(0 15px 30px rgba(204, 255, 0, 0.15)); }
+        
+        .card-img-bg { 
+            width: 100%; height: 100%; display: block; position: absolute; top: 0; left: 0; 
+            z-index: 0; border-radius: 10px;
+            background-color: #0a0b0e;
+            background-image: url('CARD.png');
+            background-size: cover;
+            background-position: center;
+            transition: filter 0.4s ease;
+        }
+
+        /* OVR spostato più a destra (left: 18%) */
+        .card-overall-left { position: absolute; top: 12%; left: 18%; text-align: center; line-height: 0.85; text-shadow: 2px 2px 10px rgba(0,0,0,0.8); z-index: 1;}
+        .card-overall-left .ovr-num { font-size: 3.2rem; font-weight: 900; color: #ffffff; transition: color 0.4s; }
+        .card-overall-left .ovr-txt { display: block; font-size: 0.85rem; color: #CCFF00; font-weight: 800; letter-spacing: 2px; margin-top: 2px; transition: color 0.4s; }
+        
+        .card-name { position: absolute; top: 48.88%; height: 10%; left: 0; width: 100%; display: flex; justify-content: center; align-items: center; font-size: 1.6rem; font-weight: 900; color: #ffffff; letter-spacing: 2px; text-transform: uppercase; text-shadow: 1px 1px 5px rgba(0,0,0,0.8); z-index: 1;}
+        .card-stats-wrapper { position: absolute; top: 62.5%; left: 14%; right: 14%; display: flex; justify-content: space-between; z-index: 1;}
+        .stats-col { display: flex; flex-direction: column; gap: 8px; width: 45%; }
+        .stat-row { display: flex; justify-content: space-between; color: #ffffff; font-weight: 800; font-size: 1.1rem; }
+        .stat-row span { color: #CCFF00; font-weight: 700; font-size: 0.9rem; transition: color 0.4s;}
+
+        /* --- ARCHETIPO IA E OVR GROWTH --- */
+        .archetype-container { background: #0a0b0e; border: 1px solid #1a1c22; border-radius: 16px; padding: 18px; display: flex; align-items: center; gap: 15px; margin-top: 25px; margin-bottom: 20px; transition: all 0.4s ease; }
+        .archetype-icon { width: 50px; height: 50px; border-radius: 12px; background: rgba(204, 255, 0, 0.1); flex-shrink: 0; color: #CCFF00; display: flex; justify-content: center; align-items: center; font-size: 1.5rem; border: 1px solid rgba(204, 255, 0, 0.3); transition: all 0.4s ease; box-shadow: 0 0 10px rgba(204, 255, 0, 0.2); }
+        .archetype-info { flex: 1; text-align: left; }
+        .archetype-label { display: inline-block; font-size: 0.6rem; color: #888; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
+        .archetype-info h3 { margin: 0 0 5px 0; font-size: 1rem; color: #fff; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; transition: color 0.4s ease;}
+        .archetype-info p { margin: 0; font-size: 0.7rem; color: #666; line-height: 1.3; }
+
+        .chart-node { cursor: pointer; outline: none; -webkit-tap-highlight-color: transparent;}
+        .chart-node text { transition: all 0.3s ease; }
+        .chart-node circle.node-dot { transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .chart-node:hover text { font-weight: 800; }
+
+        /* --- WIDGET INPUT NOME E NOTIFICHE --- */
+        .name-input-widget { background: #0a0b0e; border-radius: 16px; border: 1px solid #1a1c22; padding: 20px; margin-bottom: 15px; }
+        .name-input-widget h4 { margin: 0 0 6px 0; font-size: 0.9rem; color: #fff; text-transform: uppercase; letter-spacing: 1px;}
+        .name-input-widget p { margin: 0 0 15px 0; font-size: 0.75rem; color: #888; line-height: 1.4; }
+        .input-group { display: flex; gap: 10px; }
+        .name-input-widget input { flex: 1; padding: 12px 15px; border-radius: 8px; border: 1px solid #333; background: #111216; color: #CCFF00; font-size: 1rem; font-weight: 700; text-transform: uppercase; box-sizing: border-box; outline: none; transition: 0.3s; }
+        .name-input-widget input:focus:not(:disabled) { border-color: #CCFF00; box-shadow: 0 0 10px rgba(204,255,0,0.15); }
+        .name-input-widget input:disabled { opacity: 0.5; cursor: not-allowed; }
+        .save-btn { background: #CCFF00; color: #000; border: none; border-radius: 8px; font-weight: 800; padding: 0 20px; cursor: pointer; transition: 0.3s; text-transform: uppercase; font-size: 0.8rem; }
+        .save-btn:disabled { opacity: 0.5; cursor: not-allowed; background: #555; color: #888;}
+        .save-btn:active:not(:disabled) { transform: scale(0.95); }
+
+        .notif-widget { background: #0a0b0e; border-radius: 16px; border: 1px solid #1a1c22; padding: 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;}
+        .notif-text { flex: 1; padding-right: 15px; }
+        .notif-text h4 { margin: 0 0 6px 0; font-size: 0.9rem; color: #fff; text-transform: uppercase; letter-spacing: 1px;}
+        .notif-text p { margin: 0; font-size: 0.7rem; color: #888; line-height: 1.4; }
+        .switch { position: relative; display: inline-block; width: 46px; height: 26px; flex-shrink: 0;}
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 26px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #CCFF00; }
+        input:checked + .slider:before { transform: translateX(20px); background-color: #000; }
+
+        .bottom-nav { position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); display: flex; justify-content: space-between; align-items: center; width: 90%; max-width: 450px; background: #0a0b0e; border: 1px solid #22242a; border-radius: 50px; padding: 12px 28px; box-sizing: border-box; box-shadow: 0 15px 30px rgba(0, 0, 0, 0.9); z-index: 100; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #5a5f6b; gap: 6px; transition: all 0.3s ease; width: 55px; }
+        .nav-item span { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.5px; }
+        .nav-item svg { width: 22px; height: 22px; transition: all 0.3s ease; }
+        .nav-item.active { color: #ccff00; }
+        .nav-item.active svg { filter: drop-shadow(0px 0px 6px rgba(204, 255, 0, 0.4)); }
+        .fade-out { animation: fadeOut 0.4s ease-out forwards; }
+    </style>
+</head>
+<body>
+
+    <div id="splash-container">
+        <div class="scene-wrapper">
+            <div class="ball-wrapper"><svg class="tennis-ball" viewBox="-50 -50 100 100" style="overflow: visible;"><defs><radialGradient id="ballGrad" cx="-20%" cy="-20%" r="100%"><stop offset="0%" stop-color="#f4ff99" /><stop offset="60%" stop-color="#b5e61d" /><stop offset="100%" stop-color="#69870b" /></radialGradient></defs><circle cx="0" cy="0" r="48" fill="url(#ballGrad)" /><path d="M -30 -35 Q 15 0 -30 35" stroke="#ffffff" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M 30 -35 Q -15 0 30 35" stroke="#ffffff" stroke-width="5" fill="none" stroke-linecap="round"/></svg></div>
+            <div class="racket-wrapper">
+                <svg width="300" height="150" viewBox="0 0 300 150" style="overflow: visible;">
+                    <defs>
+                        <path id="head-shape" d="M 135 75 C 135 45, 100 13, 50 13 C 20 13, 12 35, 12 75 C 12 115, 20 137, 50 137 C 100 137, 135 105, 135 75 Z" />
+                        <clipPath id="string-clip"><use href="#head-shape" /></clipPath>
+                        <pattern id="string-pattern" width="8.5" height="8.5" patternUnits="userSpaceOnUse"><line x1="0" y1="0" x2="0" y2="8.5" stroke="#e87923" stroke-width="0.85" opacity="0.95"/><line x1="0" y1="0" x2="8.5" y2="0" stroke="#e87923" stroke-width="0.85" opacity="0.95"/></pattern>
+                        <linearGradient id="tubular-red" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#cc2c1f" /><stop offset="20%" stop-color="#fa6152" /><stop offset="50%" stop-color="#ff8073" /><stop offset="80%" stop-color="#eb4536" /><stop offset="100%" stop-color="#a31f13" /></linearGradient>
+                    </defs>
+                    <polygon points="275,60 283,56 283,94 275,90" fill="#111214" />
+                    <rect x="180" y="64" width="95" height="22" fill="#1c1e22" rx="2"/>
+                    <g stroke="#08090a" stroke-width="2.5"><line x1="185" y1="64" x2="175" y2="86" /><line x1="200" y1="64" x2="190" y2="86" /><line x1="215" y1="64" x2="205" y2="86" /><line x1="230" y1="64" x2="220" y2="86" /><line x1="245" y1="64" x2="235" y2="86" /><line x1="260" y1="64" x2="250" y2="86" /><line x1="275" y1="64" x2="265" y2="86" /></g>
+                    <rect x="178" y="62" width="10" height="26" fill="#0a0a0a" rx="2"/>
+                    <path d="M 135 42 L 182 64 L 182 86 L 135 108 Z" fill="url(#tubular-red)"/>
+                    <path d="M 142 55 L 170 69 L 170 81 L 142 95 Z" fill="#000000"/>
+                    <path d="M 134 41 Q 124 75 134 109 L 145 109 Q 135 75 145 41 Z" fill="#151617"/>
+                    <use href="#head-shape" fill="none" stroke="url(#tubular-red)" stroke-width="9" />
+                    <use href="#head-shape" fill="none" stroke="#ffb3ad" stroke-width="1.5" opacity="0.4" style="transform: scale(0.97); transform-origin: 75px 75px;" />
+                    <rect x="-10" y="0" width="170" height="150" fill="url(#string-pattern)" clip-path="url(#string-clip)" />
+                </svg>
+            </div>
+        </div> 
+    </div>
+
+    <div id="home-screen">
+        <div class="content-area">
+            
+            <div id="tab-home" class="tab-pane active">
+                <div class="header">
+                    <h1 id="home-greeting">Hi PLAYER</h1>
+                </div>
+
+                <div class="ble-widget disconnected" id="ble-widget" onclick="toggleBLE()">
+                    <div class="ble-icon"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"></polyline></svg></div>
+                    <div class="ble-info">
+                        <h4 class="ble-title">XIAO MG24 SENSE</h4>
+                        <span class="ble-status" id="ble-status-text">Scollegato - Clicca qui</span>
+                    </div>
+                    <div class="ble-battery" id="ble-battery">
+                        <span>84%</span>
+                        <div class="battery-icon"><div class="battery-level"></div></div>
+                    </div>
+                </div>
+
+                <div class="dashboard-widget" style="border-color: #b066ff;">
+                    <div class="widget-header">
+                        <span class="widget-title">Obiettivi Settimanali</span>
+                        <span class="widget-date" style="color: #b066ff;" id="weekly-timer">Scade tra 7g</span>
+                    </div>
+                    <p style="font-size: 0.75rem; color: #888; margin: 0 0 15px 0;">Completa le sfide giocando per potenziare le statistiche del tuo Avatar. Nuovi obiettivi ogni lunedì.</p>
+                    
+                    <div id="weekly-goals-container">
+                        </div>
+                    
+                    <button class="tension-btn" style="width:100%; margin-top:10px; border-color:#333; color:#666;" onclick="generateNewWeeklyGoals()">🔄 Simula Nuova Settimana (Test)</button>
+                </div>
+
+                <div class="dashboard-widget">
+                    <div class="widget-header"><span class="widget-title">Tension Radar</span><span class="widget-date" style="color: #666;">Salute Corde</span></div>
+                    <div class="tension-container">
+                        <div class="tension-circle">
+                            <svg viewBox="0 0 36 36" style="width: 100%; height: 100%;">
+                                <circle cx="18" cy="18" r="16" fill="none" stroke="#222" stroke-width="3" />
+                                <circle id="tension-progress" cx="18" cy="18" r="16" fill="none" stroke="#CCFF00" stroke-width="3" stroke-dasharray="100, 100" stroke-dashoffset="100" style="transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset 1s ease-out;" />
+                            </svg>
+                            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; flex-direction: column;">
+                                <span id="tension-val" style="color: #fff; font-weight: 800; font-size: 1.1rem;">--%</span>
+                            </div>
+                        </div>
+                        <div class="tension-info">
+                            <span id="tension-status" style="color: #888; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;">Nessun dato</span>
+                            <p id="tension-freq" style="font-size: 0.6rem; color: #555; margin: 4px 0;">Freq. non calcolata</p>
+                            <button class="tension-btn" id="ping-btn" onclick="startPingTest()">Esegui Nuovo Test</button>
+                        </div>
+                    </div>
+
+                    <div class="creep-alert" id="creep-alert">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        <span><strong>ALLARME CREEP:</strong> Corde ferme da 14 gg. Rischio snervamento passivo del poliestere. Esegui la calibrazione.</span>
+                    </div>
+                    
+                    <div class="tension-instructions" id="tension-instructions">
+                        <p>1. Avvicina il piatto corde al polsino con il sensore XIAO.<br>2. Esegui <strong>10 palleggi ritmici</strong> con una pallina al centro del piatto.<br>3. Attendi il completamento dell'analisi acustica.</p>
+                    </div>
+                </div>
+
+                <div class="dashboard-widget">
+                    <div class="widget-header">
+                        <span class="widget-title">Momentum Form</span>
+                        <span class="widget-date" style="color: #CCFF00; font-weight:800;">ON FIRE 🔥</span>
+                    </div>
+                    <div class="momentum-container">
+                        <p style="font-size: 0.7rem; color: #888; margin: 0 0 15px 0;">Percentuale Sweet Spot (Ultime 5 sessioni)</p>
+                        <div class="momentum-sparkline">
+                            <svg viewBox="0 0 100 40" preserveAspectRatio="none" style="width: 100%; height: 100%;">
+                                <line x1="0" y1="10" x2="100" y2="10" stroke="#222" stroke-width="1" stroke-dasharray="2,2"/>
+                                <line x1="0" y1="30" x2="100" y2="30" stroke="#222" stroke-width="1" stroke-dasharray="2,2"/>
+                                <polyline points="0,35 25,28 50,30 75,15 92,5" fill="none" stroke="#CCFF00" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <circle cx="92" cy="5" r="2.5" fill="#CCFF00" />
+                                <circle cx="92" cy="5" r="6" fill="#CCFF00" opacity="0.3" />
+                            </svg>
+                        </div>
+                        <div class="momentum-insight">
+                            <strong style="color:#fff;">+18% Centratura.</strong> Stai impattando la palla sempre più avanti rispetto al corpo. Continua a spingere!
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-widget">
+                    <div class="widget-header">
+                        <span class="widget-title">Arm Battery</span>
+                        <span class="widget-date" style="color: #CCFF00; font-weight:800;">RECUPERO 65%</span>
+                    </div>
+                    <div class="arm-battery-container">
+                        <div class="arm-bar-bg"><div class="arm-bar-fill" style="width: 65%;"></div></div>
+                        <div class="arm-status-text"><strong>Stato Articolare:</strong> Hai assorbito 450G di impatti ieri. Consigliato allenamento leggero per evitare infiammazioni tendinee.</div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="tab-game" class="tab-pane">
+                
+                <div class="stacked-modes">
+                    <div class="mode-card-btn" id="btn-mode-game" onclick="switchGameMode('game')">
+                        <div class="mode-text-left">
+                            <h3>Game Mode</h3>
+                            <p>Partita in diretta con punteggio manuale/vocale</p>
+                        </div>
+                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="#888" fill="none" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </div>
+                    
+                    <div class="mode-card-btn" id="btn-mode-workout" onclick="switchGameMode('workout')">
+                        <div class="mode-text-left">
+                            <h3>Workout Mode</h3>
+                            <p>Allenamento libero con Live Heatmap</p>
+                        </div>
+                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="#888" fill="none" stroke-width="2" id="icon-workout"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </div>
+                </div>
+
+                <div id="session-loader">
+                    <div id="session-loader-text" style="color: #CCFF00;"></div>
+                </div>
+
+                <div id="view-game" class="view-section">
+                    <div class="live-match-card">
+                        <div class="live-title">PARTITA IN DIRETTA</div>
+                        <div class="scoreboard">
+                            <div class="player-score">
+                                <span class="player-name">TU (PUNTO)</span>
+                                <div class="score-controls">
+                                    <button class="score-btn minus" onclick="changeScore('my', -1)">-</button>
+                                    <span class="points highlight" id="my-score">0</span>
+                                    <button class="score-btn plus" onclick="changeScore('my', 1)">+</button>
+                                </div>
+                            </div>
+                            
+                            <div class="score-divider">
+                                <span class="game-count highlight" id="my-games">0</span>
+                                <span class="dash">-</span>
+                                <span class="game-count normal" id="op-games">0</span>
+                            </div>
+                            
+                            <div class="player-score">
+                                <span class="player-name">AVVERSARIO (ERRORE)</span>
+                                <div class="score-controls">
+                                    <button class="score-btn minus" onclick="changeScore('op', -1)">-</button>
+                                    <span class="points normal" id="op-score">0</span>
+                                    <button class="score-btn plus" onclick="changeScore('op', 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="voice-commands-help">Premi i tasti oppure pronuncia <span>"PUNTO"</span> o <span>"ERRORE"</span></div>
+                        <button class="btn-end-session" onclick="endSession('game')">Termina Partita</button>
+                    </div>
+                </div>
+
+                <div id="view-workout" class="view-section">
+                    <div class="live-workout-card">
+                        <div class="workout-title">ALLENAMENTO LIBERO</div>
+                        <div class="workout-metrics">
+                            <div class="metric-circle"><span class="metric-val">2850</span><span class="metric-lab">RPM Max</span></div>
+                            
+                            <div class="workout-center-heatmap">
+                                <span style="font-size: 0.55rem; color: #00e5ff; text-transform: uppercase; margin-bottom: 5px; font-weight: 700; letter-spacing: 1px;">Live Heatmap</span>
+                                <div class="heatmap-visual-live">
+                                    <svg viewBox="0 0 150 150" style="width: 100%; height: 100%; transform: rotate(90deg);">
+                                        <path d="M 140 75 C 140 15, 95 0, 45 0 C 15 0, 5 30, 5 75 C 5 120, 15 150, 45 150 C 95 150, 140 135, 140 75 Z" fill="none" stroke="#00e5ff" stroke-width="4" />
+                                        <g stroke="#1a1c22" stroke-width="1"><line x1="20" y1="20" x2="130" y2="130"/><line x1="20" y1="130" x2="130" y2="20"/><line x1="75" y1="0" x2="75" y2="150"/><line x1="0" y1="75" x2="150" y2="75"/></g>
+                                    </svg>
+                                    <div class="heat-glow-live"></div>
+                                </div>
+                            </div>
+
+                            <div class="metric-side">
+                                <div class="m-box"><span class="m-val">138<span style="font-size:0.7rem; color:#00e5ff"> km/h</span></span><br><span class="m-lab">Vel. Media</span></div>
+                                <div class="m-box"><span class="m-val">42</span><br><span class="m-lab">Colpi</span></div>
+                            </div>
+                        </div>
+                        <div class="voice-commands-help" style="border:1px solid #00e5ff;">Sensore IMU 6-Assi in tracciamento...</div>
+                        <button class="btn-end-session" onclick="endSession('workout')">Termina Allenamento</button>
+                    </div>
+                </div>
+
+                <h3 class="section-title">STORICO RECENTE</h3>
+                
+                <div class="dashboard-widget" style="margin-bottom: 15px;">
+                    <div class="widget-header"><span class="widget-title">Ultima Partita</span><span class="widget-date" id="home-date-game" style="color: #666;">-</span></div>
+                    <div class="stats-grid">
+                        <div class="stat-box"><span class="stat-label">Tempo di Volo</span><span class="stat-value stat-highlight">1.25<span class="stat-unit">sec</span></span></div>
+                        <div class="stat-box"><span class="stat-label">Vel. Racchetta</span><span class="stat-value">--<span class="stat-unit">km/h</span></span></div>
+                        <div class="stat-box"><span class="stat-label">Colpi Totali</span><span class="stat-value">--</span></div>
+                        <div class="stat-box"><span class="stat-label">Durata Match</span><span class="stat-value">--</span></div>
+                    </div>
+                </div>
+
+                <div class="dashboard-widget">
+                    <div class="widget-header"><span class="widget-title">Ultimo Allenamento</span><span class="widget-date" id="home-date-workout" style="color: #666;">-</span></div>
+                    <div class="stats-grid">
+                        <div class="stat-box"><span class="stat-label">Top Spin</span><span class="stat-value stat-highlight">--<span class="stat-unit">RPM</span></span></div>
+                        <div class="stat-box"><span class="stat-label">Colpi</span><span class="stat-value">--</span></div>
+                        <div class="stat-box"><span class="stat-label">Calorie</span><span class="stat-value">--<span class="stat-unit">kcal</span></span></div>
+                        <div class="stat-box"><span class="stat-label">Forza G Max</span><span class="stat-value">--<span class="stat-unit">G</span></span></div>
+                    </div>
+                </div>
+
+                <h3 class="section-title" style="margin-top: 35px;">STORICO COMPLETO</h3>
+
+                <div class="history-list" id="history-container">
+                    <p style="color: #666; font-size: 0.8rem; text-align: center; margin-top: 20px;">Nessuna sessione registrata.</p>
+                </div>
+            </div>
+
+            <div id="tab-premium" class="tab-pane">
+                <h2 class="coming-soon-text">COMING SOON</h2>
+                <div class="coming-soon-icons">
+                    <svg viewBox="0 0 24 24"><ellipse cx="9" cy="9" rx="5" ry="6" transform="rotate(-45 9 9)"></ellipse><line x1="13.2" y1="13.2" x2="19" y2="19"></line><circle cx="18.5" cy="7.5" r="1.5" fill="#CCFF00" stroke="none"></circle></svg>
+                    <svg viewBox="0 0 24 24"><ellipse cx="9" cy="9" rx="5" ry="6" transform="rotate(-45 9 9)"></ellipse><line x1="13.2" y1="13.2" x2="19" y2="19"></line><circle cx="18.5" cy="7.5" r="1.5" fill="#CCFF00" stroke="none"></circle></svg>
+                    <svg viewBox="0 0 24 24"><ellipse cx="9" cy="9" rx="5" ry="6" transform="rotate(-45 9 9)"></ellipse><line x1="13.2" y1="13.2" x2="19" y2="19"></line><circle cx="18.5" cy="7.5" r="1.5" fill="#CCFF00" stroke="none"></circle></svg>
+                </div>
+            </div>
+
+            <div id="tab-avatar" class="tab-pane">
+                
+                <div class="avatar-card-container">
+                    <div class="card-img-bg"></div>
+
+                    <div class="card-overall-left">
+                        <span id="stat-ovr" class="ovr-num">0</span>
+                        <span class="ovr-txt" id="stat-ovr-txt">OVR</span>
+                    </div>
+                    
+                    <div class="card-name" id="card-player-name">PLAYER</div>
+                    
+                    <div class="card-stats-wrapper">
+                        <div class="stats-col stats-col-left">
+                            <div class="stat-row"><span class="stat-lbl">VEL</span> <span id="stat-vel" style="color: #fff;">0</span></div>
+                            <div class="stat-row"><span class="stat-lbl">POT</span> <span id="stat-pot" style="color: #fff;">0</span></div>
+                            <div class="stat-row"><span class="stat-lbl">DRT</span> <span id="stat-drt" style="color: #fff;">0</span></div>
+                        </div>
+                        <div class="stats-col stats-col-right">
+                            <div class="stat-row"><span class="stat-lbl">RES</span> <span id="stat-res" style="color: #fff;">0</span></div>
+                            <div class="stat-row"><span class="stat-lbl">SER</span> <span id="stat-ser" style="color: #fff;">0</span></div>
+                            <div class="stat-row"><span class="stat-lbl">ROV</span> <span id="stat-rov" style="color: #fff;">0</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="archetype-container">
+                    <div class="archetype-icon" id="archetype-icon">⚡</div>
+                    <div class="archetype-info">
+                        <span class="archetype-label" id="archetype-sublabel">Playstyle AI Profile</span>
+                        <h3 id="archetype-name">CALIBRAZIONE...</h3>
+                        <p id="archetype-desc">Gioca partite e allenamenti per permettere all'IA di definire il tuo stile.</p>
+                    </div>
+                </div>
+
+                <div class="dashboard-widget" style="margin-top: 20px;">
+                    <div class="widget-header">
+                        <span class="widget-title">OVR Growth (Storico)</span>
+                        <span style="color: #CCFF00; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;" id="growth-status">STATISTICHE ATTUALI</span>
+                    </div>
+                    <p style="font-size: 0.7rem; color: #888; margin: 0 0 10px 0; line-height: 1.4;">Clicca sui mesi precedenti per visualizzare le tue vecchie statistiche e il tuo vecchio Playstyle direttamente sulla Carta in alto.</p>
+                    
+                    <div class="momentum-sparkline" style="height: 100px; margin-top: 15px;">
+                        <svg viewBox="0 0 300 90" style="width: 100%; height: 100%; overflow: visible;">
+                            <line x1="15" y1="20" x2="285" y2="20" stroke="#222" stroke-width="1" stroke-dasharray="2,2"/>
+                            <line x1="15" y1="50" x2="285" y2="50" stroke="#222" stroke-width="1" stroke-dasharray="2,2"/>
+                            
+                            <polyline id="trend-line" points="20,70 70,60 120,55 170,40 220,25 280,10" fill="none" stroke="#CCFF00" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="transition: stroke 0.4s ease;"/>
+                            
+                            <g class="chart-node" onclick="viewHistory(0)">
+                                <circle cx="20" cy="70" r="20" fill="transparent"/>
+                                <circle cx="20" cy="70" r="4" fill="#111" stroke="#888" stroke-width="2" class="node-dot"/>
+                                <text x="20" y="90" fill="#888" font-size="10" font-weight="600" text-anchor="middle" class="node-text">GEN</text>
+                            </g>
+                            <g class="chart-node" onclick="viewHistory(1)">
+                                <circle cx="70" cy="60" r="20" fill="transparent"/>
+                                <circle cx="70" cy="60" r="4" fill="#111" stroke="#888" stroke-width="2" class="node-dot"/>
+                                <text x="70" y="90" fill="#888" font-size="10" font-weight="600" text-anchor="middle" class="node-text">FEB</text>
+                            </g>
+                            <g class="chart-node" onclick="viewHistory(2)">
+                                <circle cx="120" cy="55" r="20" fill="transparent"/>
+                                <circle cx="120" cy="55" r="4" fill="#111" stroke="#888" stroke-width="2" class="node-dot"/>
+                                <text x="120" y="90" fill="#888" font-size="10" font-weight="600" text-anchor="middle" class="node-text">MAR</text>
+                            </g>
+                            <g class="chart-node" onclick="viewHistory(3)">
+                                <circle cx="170" cy="40" r="20" fill="transparent"/>
+                                <circle cx="170" cy="40" r="4" fill="#111" stroke="#888" stroke-width="2" class="node-dot"/>
+                                <text x="170" y="90" fill="#888" font-size="10" font-weight="600" text-anchor="middle" class="node-text">APR</text>
+                            </g>
+                            <g class="chart-node" onclick="viewHistory(4)">
+                                <circle cx="220" cy="25" r="20" fill="transparent"/>
+                                <circle cx="220" cy="25" r="4" fill="#111" stroke="#888" stroke-width="2" class="node-dot"/>
+                                <text x="220" y="90" fill="#888" font-size="10" font-weight="600" text-anchor="middle" class="node-text">MAG</text>
+                            </g>
+                            <g class="chart-node" onclick="viewHistory(5)">
+                                <circle cx="280" cy="10" r="25" fill="transparent"/>
+                                <circle cx="280" cy="10" r="7" fill="#CCFF00" stroke="#CCFF00" stroke-width="2" class="node-dot"/>
+                                <text x="280" y="90" fill="#CCFF00" font-size="10" font-weight="800" text-anchor="middle" class="node-text">OGGI</text>
+                            </g>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="name-input-widget">
+                    <h4>Identità Atleta</h4>
+                    <p id="name-status-msg">Modifica il nome sulla tua carta. Nota: questa operazione è consentita <strong>solo una volta ogni 7 giorni</strong>.</p>
+                    <div class="input-group">
+                        <input type="text" id="player-name-input" placeholder="Es. LUCA" maxlength="12">
+                        <button id="save-name-btn" class="save-btn">Salva</button>
+                    </div>
+                </div>
+
+                <div class="notif-widget">
+                    <div class="notif-text">
+                        <h4>Ricevi Notifiche</h4>
+                        <p>Ricevi una frase motivazionale a sorpresa una volta alla settimana, per caricarti prima di scendere in campo!</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+            </div>
+
+        </div>
+
+        <nav class="bottom-nav">
+            <a href="#" class="nav-item active" data-target="home"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12H3l9-9 9 9h-2v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9z"></path><path d="M10 22V12h4v10"></path></svg><span>HOME</span></a>
+            <a href="#" class="nav-item" data-target="game"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="9" cy="9" rx="5" ry="6" transform="rotate(-45 9 9)"></ellipse><line x1="13.2" y1="13.2" x2="19" y2="19" stroke-width="2.5"></line><circle cx="18.5" cy="7.5" r="1.5" stroke="currentColor" fill="none" stroke-width="1.5"></circle></svg><span>GAME</span></a>
+            <a href="#" class="nav-item" data-target="premium"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="3.5" r="2.2"/><circle cx="4" cy="7.5" r="2.2"/><circle cx="20" cy="7.5" r="2.2"/><path d="M 3.5 9.5 L 4.5 16 Q 12 15.2 19.5 16 L 20.5 9.5 C 17 12 14.5 12.5 12 6 C 9.5 12.5 7 12 3.5 9.5 Z" /><path d="M 4 18 Q 12 17.2 20 18 L 20 20 Q 12 19.2 4 20 Z" /></svg><span>PREMIUM</span></a>
+            <a href="#" class="nav-item" data-target="avatar"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"></circle><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"></path></svg><span>AVATAR</span></a>
+        </nav>
+
+    </div>
+
+    <script>
+        // --- LOGICA DI MIGRAZIONE VECCHI DATI COMPATIBILE CON DRT E ROV ---
+        const defaultStats = { ovr: 0, vel: 0, pot: 0, drt: 0, res: 0, ser: 0, rov: 0 };
+        
+        function getStoredStats() {
+            let stats = JSON.parse(localStorage.getItem('bioTennisStats')) || { ...defaultStats };
+            let modified = false;
+            if (stats.tec !== undefined) { stats.drt = stats.tec; delete stats.tec; modified = true; }
+            if (stats.rot !== undefined) { stats.rov = stats.rot; delete stats.rot; modified = true; }
+            if (modified) localStorage.setItem('bioTennisStats', JSON.stringify(stats));
+            return stats;
+        }
+
+        let activeGoals = JSON.parse(localStorage.getItem('bioTennisGoals'));
+        if(activeGoals) {
+            let goalsModified = false;
+            activeGoals.forEach(g => {
+                if(g.rewardStat === 'tec') { g.rewardStat = 'drt'; g.rewardName = g.rewardName.replace('TEC', 'DRT'); goalsModified = true; }
+                if(g.rewardStat === 'rot') { g.rewardStat = 'rov'; g.rewardName = g.rewardName.replace('ROT', 'ROV'); goalsModified = true; }
+            });
+            if (goalsModified) localStorage.setItem('bioTennisGoals', JSON.stringify(activeGoals));
+        }
+
+        setTimeout(() => {
+            const splash = document.getElementById('splash-container');
+            const home = document.getElementById('home-screen');
+            splash.classList.add('fade-out');
+            setTimeout(() => { splash.style.display = 'none'; home.style.display = 'block'; }, 400);
+        }, 5000); 
+
+        const navItems = document.querySelectorAll('.nav-item');
+        const tabPanes = document.querySelectorAll('.tab-pane');
+
+        navItems.forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault(); 
+                navItems.forEach(nav => nav.classList.remove('active'));
+                tabPanes.forEach(pane => pane.classList.remove('active'));
+                this.classList.add('active');
+                const target = this.getAttribute('data-target');
+                document.getElementById('tab-' + target).classList.add('active');
+            });
+        });
+
+        // --- MOTORE WEB BLUETOOTH FILTRATO SULL'UUID DEL SERVIZIO ---
+        let bleDevice = null;
+        let bleCharacteristic = null;
+        const TENNIS_SERVICE_UUID = '19b10000-e8f2-537e-4f6c-d104768a1214'; 
+        const IMU_CHARACTERISTIC_UUID = '19b10001-e8f2-537e-4f6c-d104768a1214';
+
+        async function toggleBLE() {
+            const widget = document.getElementById('ble-widget');
+            const text = document.getElementById('ble-status-text');
+
+            if (!bleDevice || !bleDevice.gatt.connected) {
+                text.innerText = "Ricerca in corso...";
+                try {
+                    // Filtro basato sull'UUID del Servizio per eliminare tutti i codici sconosciuti o altri hardware
+                    // ... (resto del tuo codice precedente) ...
+
+    // Togliamo i filtri restrittivi e diciamo a Chrome di mostrare tutto
+const device = await navigator.bluetooth.requestDevice({
+    acceptAllDevices: true,
+    optionalServices: ['19b10000-e8f2-537e-4f6c-d104768a1214']
+});
+
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService('19b10000-e8f2-537e-4f6c-d104768a1214');        // ... (il resto del tuo codice che abilita le notifiche o aggiorna l'UI) ...
+                    await bleCharacteristic.startNotifications();
+                    bleCharacteristic.addEventListener('characteristicvaluechanged', handleIncomingIMUData);
+
+                    widget.classList.remove('disconnected');
+                    widget.classList.add('connected');
+                    text.innerText = "CONNESSO E IN SYNC";
+                    
+                    bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+               } catch (error) {
+            // FAI APPARIRE UN POPUP SUL TELEFONO CON L'ERRORE ESATTO!
+            alert("Chrome dice: " + error);  
+            console.error(error);
+                    console.error("Errore BLE:", error);
+                    text.innerText = "Errore - Riprova";
+                    widget.classList.remove('connected');
+                    widget.classList.add('disconnected');
+                }
+            } else {
+                await bleDevice.gatt.disconnect();
+            }
+        }
+
+        function onDisconnected() {
+            const widget = document.getElementById('ble-widget');
+            const text = document.getElementById('ble-status-text');
+            widget.classList.remove('connected');
+            widget.classList.add('disconnected');
+            text.innerText = "Scollegato - Clicca qui";
+        }
+
+        function handleIncomingIMUData(event) {
+            const value = event.target.value;
+            let accX = value.getFloat32(0, true);
+            console.log("Forza G Ricevuta:", accX);
+        }
+
+        // --- CALIBRAZIONE E TENSION RADAR ---
+        function startPingTest() {
+            const btn = document.getElementById('ping-btn');
+            const status = document.getElementById('tension-status');
+            const freq = document.getElementById('tension-freq');
+            const val = document.getElementById('tension-val');
+            const progress = document.getElementById('tension-progress');
+            const instructions = document.getElementById('tension-instructions');
+            const creepAlert = document.getElementById('creep-alert');
+            
+            btn.disabled = true;
+            btn.innerText = "ASCOLTO IN CORSO... (Palleggia)";
+            
+            instructions.classList.add('active');
+            status.innerText = "Calibrazione Acustica...";
+            status.style.color = "#00e5ff";
+            
+            setTimeout(() => {
+                const health = 85 + Math.floor(Math.random() * 10);
+                const hz = 530 + Math.floor(Math.random() * 15);
+                
+                val.innerText = health + "%";
+                status.innerText = "Ottima Elasticità";
+                status.style.color = "#CCFF00";
+                freq.innerText = "Freq. registrata: " + hz + " Hz";
+                freq.style.color = "#888";
+                progress.style.strokeDashoffset = 100 - health;
+                
+                instructions.classList.remove('active');
+                
+                if(creepAlert) creepAlert.style.display = 'none';
+                
+                btn.innerText = "Ping Test Completato";
+                setTimeout(() => { btn.disabled = false; btn.innerText = "Esegui Nuovo Test"; }, 2000);
+            }, 6000);
+        }
+
+        function initStats() {
+            viewHistory(5); 
+        }
+
+        // --- SISTEMA OBIETTIVI SETTIMANALI ---
+        const possibleGoals = [
+            { id: 1, title: "Muro Invalicabile", desc: "Esegui 1000 colpi totali", target: 1000, rewardStat: "res", rewardName: "+2 RES", rewardVal: 2 },
+            { id: 2, title: "Cecchino", desc: "Raggiungi 80% di Sweet Spot in media", target: 80, rewardStat: "drt", rewardName: "+3 DRT", rewardVal: 3 },
+            { id: 3, title: "Braccio d'Oro", desc: "Tira 50 colpi accelerati", target: 50, rewardStat: "pot", rewardName: "+2 POT", rewardVal: 2 },
+            { id: 4, title: "Maratoneta", desc: "Gioca 3 sessioni diverse", target: 3, rewardStat: "res", rewardName: "+2 RES", rewardVal: 2 },
+            { id: 5, title: "Re delle Rotazioni", desc: "Mantieni 2500 RPM medi", target: 2500, rewardStat: "rov", rewardName: "+3 ROV", rewardVal: 3 },
+            { id: 6, title: "Servizio Letale", desc: "Esegui 30 servizi", target: 30, rewardStat: "ser", rewardName: "+2 SER", rewardVal: 2 },
+            { id: 7, title: "Scheggia", desc: "Velocità racchetta > 120km/h", target: 120, rewardStat: "vel", rewardName: "+3 VEL", rewardVal: 3 }
+        ];
+
+        function generateNewWeeklyGoals() {
+            let shuffled = possibleGoals.sort(() => 0.5 - Math.random());
+            activeGoals = shuffled.slice(0, 3).map(g => ({ ...g, current: 0, claimed: false }));
+            localStorage.setItem('bioTennisGoals', JSON.stringify(activeGoals));
+            renderGoals();
+        }
+
+        function renderGoals() {
+            const container = document.getElementById('weekly-goals-container');
+            container.innerHTML = '';
+            
+            activeGoals.forEach((goal, index) => {
+                const perc = Math.min(100, Math.floor((goal.current / goal.target) * 100));
+                const isReady = perc >= 100 && !goal.claimed;
+                const isClaimed = goal.claimed;
+                
+                let btnClass = "goal-claim-btn";
+                let btnText = "In Corso";
+                if(isReady) { btnClass += " ready"; btnText = "RISCATTA"; }
+                if(isClaimed) { btnClass += " claimed"; btnText = "COMPLETATO"; }
+
+                const html = `
+                    <div class="goal-item ${isClaimed ? 'completed' : ''}">
+                        <div class="goal-header">
+                            <span class="goal-title">${goal.title}</span>
+                            <span class="goal-reward">${goal.rewardName}</span>
+                        </div>
+                        <p style="font-size: 0.65rem; color: #aaa; margin: 0 0 10px 0;">${goal.desc}</p>
+                        <div class="goal-bar-bg">
+                            <div class="goal-bar-fill" style="width: ${perc}%;"></div>
+                        </div>
+                        <div class="goal-footer">
+                            <span class="goal-progress-text">${Math.min(goal.current, goal.target)} / ${goal.target}</span>
+                            <button class="${btnClass}" ${(!isReady) ? 'disabled' : ''} onclick="claimReward(${index})">${btnText}</button>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+            });
+        }
+
+        function claimReward(index) {
+            let goal = activeGoals[index];
+            if(goal.current >= goal.target && !goal.claimed) {
+                let stats = getStoredStats();
+                stats[goal.rewardStat] = Math.min(99, stats[goal.rewardStat] + goal.rewardVal);
+                stats.ovr = Math.floor((stats.vel + stats.pot + stats.drt + stats.res + stats.ser + stats.rov) / 6);
+                
+                localStorage.setItem('bioTennisStats', JSON.stringify(stats));
+                
+                goal.claimed = true;
+                localStorage.setItem('bioTennisGoals', JSON.stringify(activeGoals));
+                
+                initStats(); 
+                renderGoals(); 
+                alert(`Complimenti! Hai sbloccato ${goal.rewardName}. La tua carta Avatar è stata aggiornata.`);
+            }
+        }
+
+        if (!activeGoals || activeGoals.length === 0) {
+            generateNewWeeklyGoals();
+        } else {
+            renderGoals();
+        }
+
+        // --- HISTORICAL E MACCHINA DEL TEMPO ---
+        const historicalStats = [
+            { month: 'GENNAIO', ovr: 12, vel: 12, pot: 14, drt: 10, res: 15, ser: 8, rov: 13 },
+            { month: 'FEBBRAIO', ovr: 14, vel: 13, pot: 16, drt: 12, res: 16, ser: 10, rov: 15 },
+            { month: 'MARZO', ovr: 16, vel: 14, pot: 19, drt: 14, res: 18, ser: 11, rov: 18 },
+            { month: 'APRILE', ovr: 18, vel: 15, pot: 22, drt: 18, res: 20, ser: 12, rov: 20 },
+            { month: 'MAGGIO', ovr: 19, vel: 15, pot: 24, drt: 20, res: 22, ser: 13, rov: 21 }
+        ];
+
+        function viewHistory(index) {
+            let statsToShow;
+            const statusEl = document.getElementById('growth-status');
+            const cardImgBg = document.querySelector('.card-img-bg');
+            const statLabels = document.querySelectorAll('.stat-lbl');
+            const ovrTxt = document.getElementById('stat-ovr-txt');
+            const subLabel = document.getElementById('archetype-sublabel');
+            
+            const dots = document.querySelectorAll('.node-dot');
+            const texts = document.querySelectorAll('.node-text');
+            
+            dots.forEach((dot, i) => {
+                if (i === index) {
+                    dot.setAttribute('fill', '#CCFF00');
+                    dot.setAttribute('stroke', '#CCFF00');
+                    dot.setAttribute('r', '7');
+                } else {
+                    dot.setAttribute('fill', '#111');
+                    dot.setAttribute('stroke', '#888');
+                    dot.setAttribute('r', '4');
+                }
+            });
+
+            texts.forEach((text, i) => {
+                if(i === index) {
+                    text.setAttribute('fill', '#CCFF00');
+                    text.setAttribute('font-weight', '800');
+                } else {
+                    text.setAttribute('fill', '#888');
+                    text.setAttribute('font-weight', '600');
+                }
+            });
+
+            if (index === 5) {
+                statsToShow = getStoredStats();
+                statusEl.innerText = "STATISTICHE ATTUALI";
+                statusEl.style.color = "#CCFF00";
+                subLabel.innerText = "Playstyle AI Profile - ATTUALE";
+                document.getElementById('trend-line').setAttribute('stroke', '#CCFF00');
+                
+                if(cardImgBg) cardImgBg.style.filter = "none";
+                statLabels.forEach(s => s.style.color = '#CCFF00');
+                ovrTxt.style.color = '#CCFF00';
+            } else {
+                statsToShow = historicalStats[index];
+                statusEl.innerText = "STORICO: " + statsToShow.month;
+                statusEl.style.color = "#00e5ff";
+                subLabel.innerText = "Playstyle AI Profile - " + statsToShow.month;
+                document.getElementById('trend-line').setAttribute('stroke', '#555');
+                
+                if(cardImgBg) cardImgBg.style.filter = "hue-rotate(180deg) saturate(1.5) brightness(0.8)"; 
+                statLabels.forEach(s => s.style.color = '#00e5ff');
+                ovrTxt.style.color = '#00e5ff';
+            }
+
+            document.getElementById('stat-ovr').innerText = statsToShow.ovr;
+            document.getElementById('stat-vel').innerText = statsToShow.vel;
+            document.getElementById('stat-pot').innerText = statsToShow.pot;
+            document.getElementById('stat-drt').innerText = statsToShow.drt;
+            document.getElementById('stat-res').innerText = statsToShow.res;
+            document.getElementById('stat-ser').innerText = statsToShow.ser;
+            document.getElementById('stat-rov').innerText = statsToShow.rov;
+            
+            updateArchetype(statsToShow, index !== 5);
+        }
+
+        function updateArchetype(stats, isHistorical = false) {
+            const nameEl = document.getElementById('archetype-name');
+            const descEl = document.getElementById('archetype-desc');
+            const iconEl = document.getElementById('archetype-icon');
+
+            if (stats.ovr === 0) {
+                nameEl.innerText = "ROOKIE";
+                descEl.innerText = "Gioca partite o allenamenti per permettere all'IA di definire il tuo stile.";
+                iconEl.innerHTML = "🌱";
+                iconEl.style.color = "#888";
+                iconEl.style.borderColor = "#333";
+                iconEl.style.background = "#111";
+                iconEl.style.boxShadow = "none";
+                return;
+            }
+
+            const maxStat = Math.max(stats.vel, stats.pot, stats.drt, stats.res, stats.ser, stats.rov);
+            let archetype = "";
+            let desc = "";
+            let icon = "";
+            let color = "";
+
+            if (maxStat === stats.pot || maxStat === stats.vel) {
+                archetype = "AGGRESSIVE BASELINER";
+                desc = "Dominio da fondo campo. Sfrutti la potenza per rubare tempo all'avversario e chiudere il punto.";
+                icon = "🔥";
+                color = isHistorical ? "#00e5ff" : "#ff4d4d"; 
+            } else if (maxStat === stats.drt || maxStat === stats.rov) {
+                archetype = "TACTICAL SPINNER";
+                desc = "Controllo totale. Usi angoli stretti e rotazioni pesanti per muovere l'avversario fuori dal campo.";
+                icon = "🌪️";
+                color = isHistorical ? "#00e5ff" : "#00e5ff"; 
+            } else if (maxStat === stats.res) {
+                archetype = "COUNTERPUNCHER";
+                desc = "Muro invalicabile. Eccelli in difesa e logori mentalmente e fisicamente chi hai di fronte.";
+                icon = "🛡️";
+                color = isHistorical ? "#00e5ff" : "#CCFF00"; 
+            } else if (maxStat === stats.ser) {
+                archetype = "SERVE & VOLLEY";
+                desc = "Rete e istinto. Accorci gli scambi affidandoti a un servizio esplosivo e chiusure repentine.";
+                icon = "⚡";
+                color = isHistorical ? "#00e5ff" : "#b066ff"; 
+            }
+
+            nameEl.innerText = archetype;
+            nameEl.style.color = color;
+            descEl.innerText = desc;
+            iconEl.innerHTML = icon;
+            iconEl.style.color = color;
+            iconEl.style.borderColor = color;
+            iconEl.style.background = `rgba(255, 255, 255, 0.05)`; 
+            iconEl.style.boxShadow = `0 0 15px ${color}40`;
+        }
+
+        // --- SCORING ENGINE ---
+        const tennisPoints = ['0', '15', '30', '40', 'AD'];
+        let myScoreIdx = 0; let opScoreIdx = 0;
+        let myGames = 0; let opGames = 0;
+
+        function updateScoreUI() {
+            document.getElementById('my-score').innerText = tennisPoints[myScoreIdx];
+            document.getElementById('op-score').innerText = tennisPoints[opScoreIdx];
+            document.getElementById('my-games').innerText = myGames;
+            document.getElementById('op-games').innerText = opGames;
+        }
+
+        function changeScore(player, delta) {
+            if(player === 'my') {
+                myScoreIdx += delta;
+                if(myScoreIdx < 0) myScoreIdx = 0;
+                if(myScoreIdx > 3 && opScoreIdx < 3) { winGame('my'); } 
+                else if (myScoreIdx === 4 && opScoreIdx === 4) { myScoreIdx = 3; opScoreIdx = 3; } 
+                else if (myScoreIdx > 4) { winGame('my'); } 
+                else if (myScoreIdx === 4 && opScoreIdx === 3) { opScoreIdx = 3; }
+            } else {
+                opScoreIdx += delta;
+                if(opScoreIdx < 0) opScoreIdx = 0;
+                if(opScoreIdx > 3 && myScoreIdx < 3) { winGame('op'); } 
+                else if (opScoreIdx === 4 && myScoreIdx === 4) { myScoreIdx = 3; opScoreIdx = 3; } 
+                else if (opScoreIdx > 4) { winGame('op'); } 
+                else if (opScoreIdx === 4 && myScoreIdx === 3) { myScoreIdx = 3; }
+            }
+            updateScoreUI();
+        }
+
+        function winGame(player) {
+            if(player === 'my') myGames++; else opGames++;
+            myScoreIdx = 0; opScoreIdx = 0;
+        }
+
+        function resetTennisScore() {
+            myScoreIdx = 0; opScoreIdx = 0; myGames = 0; opGames = 0;
+            updateScoreUI();
+        }
+
+        let sessionTimerInterval;
+
+        function switchGameMode(mode) {
+            if (sessionTimerInterval) clearInterval(sessionTimerInterval);
+
+            document.getElementById('view-game').classList.remove('active');
+            document.getElementById('view-workout').classList.remove('active');
+            document.getElementById('btn-mode-game').classList.remove('active-game');
+            document.getElementById('btn-mode-workout').classList.remove('active-workout');
+            
+            document.querySelector('#btn-mode-game svg').setAttribute('stroke', '#888');
+            document.getElementById('icon-workout').setAttribute('stroke', '#888');
+            
+            if(mode === 'game') {
+                document.getElementById('btn-mode-game').classList.add('active-game');
+                document.querySelector('#btn-mode-game svg').setAttribute('stroke', '#CCFF00');
+            } else {
+                document.getElementById('btn-mode-workout').classList.add('active-workout');
+                document.getElementById('icon-workout').setAttribute('stroke', '#00e5ff');
+            }
+
+            const loader = document.getElementById('session-loader');
+            const loaderText = document.getElementById('session-loader-text');
+            loader.style.display = 'block';
+            
+            const typeText = mode === 'game' ? 'PARTITA' : 'ALLENAMENTO';
+            const highlightColor = mode === 'game' ? '#CCFF00' : '#00e5ff';
+            
+            let countdown = 10;
+            loaderText.innerHTML = `INIZIO ${typeText} TRA<br><span class="timer-number">${countdown}</span>`;
+            loaderText.style.color = highlightColor;
+
+            sessionTimerInterval = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    loaderText.innerHTML = `INIZIO ${typeText} TRA<br><span class="timer-number">${countdown}</span>`;
+                } else {
+                    clearInterval(sessionTimerInterval);
+                    loader.style.display = 'none';
+                    if(mode === 'game') resetTennisScore();
+                    document.getElementById('view-' + mode).classList.add('active');
+                }
+            }, 1000);
+        }
+
+        function endSession(mode) {
+            if (sessionTimerInterval) clearInterval(sessionTimerInterval);
+            
+            document.getElementById('view-' + mode).classList.remove('active');
+            document.getElementById('btn-mode-' + mode).classList.remove(mode === 'game' ? 'active-game' : 'active-workout');
+            
+            document.querySelector('#btn-mode-game svg').setAttribute('stroke', '#888');
+            document.getElementById('icon-workout').setAttribute('stroke', '#888');
+
+            let stats = getStoredStats();
+            
+            stats.vel = Math.min(99, stats.vel + Math.floor(Math.random() * 3) + 1);
+            stats.pot = Math.min(99, stats.pot + Math.floor(Math.random() * 3) + 1);
+            stats.drt = Math.min(99, stats.drt + Math.floor(Math.random() * 4) + 1);
+            stats.res = Math.min(99, stats.res + Math.floor(Math.random() * 3) + 1);
+            stats.ser = Math.min(99, stats.ser + Math.floor(Math.random() * 2) + 1);
+            stats.rov = Math.min(99, stats.rov + Math.floor(Math.random() * 3) + 1);
+            stats.ovr = Math.floor((stats.vel + stats.pot + stats.drt + stats.res + stats.ser + stats.rov) / 6);
+            
+            localStorage.setItem('bioTennisStats', JSON.stringify(stats));
+            viewHistory(5);
+
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+            const historyHtml = `
+                <div class="history-item" onclick="toggleHistory(this)">
+                    <div class="history-summary">
+                        <div class="history-left">
+                            <span class="hist-title">${mode === 'game' ? 'Partita Registrata' : 'Allenamento Libero'}</span>
+                            <span class="hist-date">${dateStr} • Registrata da XIAO</span>
+                        </div>
+                        <div class="hist-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></div>
+                    </div>
+                    <div class="history-details">
+                        <div class="stats-grid">
+                            <div class="stat-box"><span class="stat-label">Sweet Spot</span><span class="stat-value stat-highlight">${60 + Math.floor(Math.random() * 35)}<span class="stat-unit">%</span></span></div>
+                            <div class="stat-box"><span class="stat-label">Colpi</span><span class="stat-value">${100 + Math.floor(Math.random() * 300)}</span></div>
+                        </div>
+                        <div class="heatmap-container">
+                            <span class="stat-label">Mappa d'Impatto (Sweet Spot)</span>
+                            <div class="heatmap-visual" style="width: 85px; height: 110px;">
+                                <svg viewBox="0 0 150 150" style="width: 100%; height: 100%; transform: rotate(90deg);">
+                                    <path d="M 140 75 C 140 15, 95 0, 45 0 C 15 0, 5 30, 5 75 C 5 120, 15 150, 45 150 C 95 150, 140 135, 140 75 Z" fill="none" stroke="#333" stroke-width="4" />
+                                    <g stroke="#1a1c22" stroke-width="1"><line x1="20" y1="20" x2="130" y2="130"/><line x1="20" y1="130" x2="130" y2="20"/><line x1="75" y1="0" x2="75" y2="150"/><line x1="0" y1="75" x2="150" y2="75"/></g>
+                                </svg>
+                                <div class="heat-glow" style="width: 45px; height: 50px; top: 30px; left: 20px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const historyContainer = document.getElementById('history-container');
+            if(historyContainer.innerText.includes('Nessuna sessione')) historyContainer.innerHTML = '';
+            
+            historyContainer.insertAdjacentHTML('afterbegin', historyHtml);
+
+            if(mode === 'game') document.getElementById('home-date-game').innerText = dateStr;
+            if(mode === 'workout') document.getElementById('home-date-workout').innerText = dateStr;
+            
+            if (activeGoals) {
+                activeGoals.forEach(g => {
+                    if (!g.claimed) {
+                        g.current += Math.floor(Math.random() * (g.target / 2)) + 1; 
+                    }
+                });
+                localStorage.setItem('bioTennisGoals', JSON.stringify(activeGoals));
+                renderGoals();
+            }
+        }
+
+        function toggleHistory(element) {
+            if (element.classList.contains('expanded')) { element.classList.remove('expanded'); return; }
+            const allItems = document.querySelectorAll('.history-item');
+            allItems.forEach(item => item.classList.remove('expanded'));
+            element.classList.add('expanded');
+        }
+
+        // --- GESTIONE IDENTITÀ ---
+        const nameInput = document.getElementById('player-name-input');
+        const saveBtn = document.getElementById('save-name-btn');
+        const cardNameDisplay = document.getElementById('card-player-name');
+        const homeGreeting = document.getElementById('home-greeting');
+        const statusMsg = document.getElementById('name-status-msg');
+
+        const savedName = localStorage.getItem('bioTennisPlayerName');
+        if (savedName) { cardNameDisplay.innerText = savedName; homeGreeting.innerText = "Hi " + savedName; }
+
+        function checkNameChangeStatus() {
+            const lastChangeStr = localStorage.getItem('lastNameChangeDate');
+            if (lastChangeStr) {
+                const diffTime = Math.abs(new Date() - new Date(parseInt(lastChangeStr)));
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                if (diffDays <= 7) {
+                    const daysLeft = 8 - diffDays; 
+                    nameInput.disabled = true; saveBtn.disabled = true;
+                    statusMsg.innerHTML = `<span style="color: #ff4d4d;">Hai già cambiato il nome di recente. Potrai modificarlo nuovamente tra <strong>${daysLeft} giorni</strong>.</span>`;
+                    return false;
+                }
+            }
+            return true;
+        }
+        checkNameChangeStatus();
+
+        saveBtn.addEventListener('click', function() {
+            if (!checkNameChangeStatus()) return;
+            const val = nameInput.value.trim().toUpperCase();
+            if (val !== '') {
+                cardNameDisplay.innerText = val; homeGreeting.innerText = "Hi " + val;
+                localStorage.setItem('bioTennisPlayerName', val);
+                localStorage.setItem('lastNameChangeDate', Date.now().toString());
+                nameInput.value = ''; checkNameChangeStatus();
+            }
+        });
+
+        initStats();
+    </script>
+</body>
+</html>

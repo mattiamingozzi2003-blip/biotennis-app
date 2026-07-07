@@ -707,44 +707,54 @@ const device = await navigator.bluetooth.requestDevice({
     optionalServices: ['19b10000-e8f2-537e-4f6c-d104768a1214']
 });
 
-        const server = await device.gatt.connect();
-        const service = await server.getPrimaryService('19b10000-e8f2-537e-4f6c-d104768a1214');        // ... (il resto del tuo codice che abilita le notifiche o aggiorna l'UI) ...
-                    await bleCharacteristic.startNotifications();
-                    bleCharacteristic.addEventListener('characteristicvaluechanged', handleIncomingIMUData);
+      const server = await device.gatt.connect();
+    const service = await server.getPrimaryService('19b10000-e8f2-537e-4f6c-d104768a1214');
+    
+    // 1. LA RIGA MANCANTE: Otteniamo il canale dati (UUID corretto)
+    const bleCharacteristic = await service.getCharacteristic('19b10001-e8f2-537e-4f6c-d104768a1214');
+    
+    await bleCharacteristic.startNotifications();
+    bleCharacteristic.addEventListener('characteristicvaluechanged', handleIncomingIMUData);
 
-                    widget.classList.remove('disconnected');
-                    widget.classList.add('connected');
-                    text.innerText = "CONNESSO E IN SYNC";
-                    
-                    bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+    widget.classList.remove('disconnected');
+    widget.classList.add('connected');
+    text.innerText = "CONNESSO E IN SYNC";
 
-               } catch (error) {
-            // FAI APPARIRE UN POPUP SUL TELEFONO CON L'ERRORE ESATTO!
-            alert("Chrome dice: " + error);  
-            console.error(error);
-                    console.error("Errore BLE:", error);
-                    text.innerText = "Errore - Riprova";
-                    widget.classList.remove('connected');
-                    widget.classList.add('disconnected');
-                }
-            } else {
-                await bleDevice.gatt.disconnect();
-            }
-        }
+    // 2. CORREZIONE NOME VARIABILE: usiamo 'device' e non 'bleDevice'
+    device.addEventListener('gattserverdisconnected', onDisconnected);
+    
+} catch (error) {
+    // FAI APPARIRE UN POPUP SUL TELEFONO CON L'ERRORE ESATTO!
+    alert("Chrome dice: " + error);
+    console.error("Errore BLE:", error);
+    text.innerText = "Errore - Riprova";
+    widget.classList.remove('connected');
+    widget.classList.add('disconnected');
+}
+}
 
-        function onDisconnected() {
-            const widget = document.getElementById('ble-widget');
-            const text = document.getElementById('ble-status-text');
-            widget.classList.remove('connected');
-            widget.classList.add('disconnected');
-            text.innerText = "Scollegato - Clicca qui";
-        }
+function onDisconnected() {
+    const widget = document.getElementById('ble-widget');
+    const text = document.getElementById('ble-status-text');
+    widget.classList.remove('connected');
+    widget.classList.add('disconnected');
+    text.innerText = "Scollegato - Clicca qui";
+}
 
-        function handleIncomingIMUData(event) {
-            const value = event.target.value;
-            let accX = value.getFloat32(0, true);
-            console.log("Forza G Ricevuta:", accX);
-        }
+function handleIncomingIMUData(event) {
+    // 3. LETTURA TESTO: Traduciamo i dati Bluetooth in testo leggibile (DRT e ROV)
+    const value = new TextDecoder().decode(event.target.value);
+    console.log("Colpo Ricevuto:", value);
+    
+    // Qui leghi i dati alla tua app
+    if (value === "DRT") {
+        console.log("Dritto registrato!");
+        // Aggiungi qui la logica per aggiornare il contatore DRT
+    } else if (value === "ROV") {
+        console.log("Rovescio registrato!");
+        // Aggiungi qui la logica per aggiornare il contatore ROV
+    }
+}
 
         // --- CALIBRAZIONE E TENSION RADAR ---
         function startPingTest() {

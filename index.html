@@ -3,1213 +3,976 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BioTennis - App</title>
+    <title>Tennis Biometrics - App</title>
     <style>
-        /* --- SFONDO E SETUP GENERALE --- */
-        body, html {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            background-color: #000000;
-            display: flex; justify-content: center; align-items: center;
-            overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        /* ================= BASE & COLORI ================= */
+        :root {
+            --neon-main: #ccff00;
+            --bg-dark: #000000;
+            --glass-bg: rgba(15, 20, 30, 0.85);
+            --theme-color: #a6a6a6;
+            --theme-rgb: 166, 166, 166;
         }
 
-        #splash-container { position: relative; width: 100%; height: 100%; z-index: 50; }
-        .scene-wrapper { position: absolute; top: 50%; left: 50%; width: 0; height: 0; transform: scale(0.75); }
-
-        .ball-wrapper { position: absolute; width: 32px; height: 32px; margin-left: -16px; margin-top: -16px; top: 0; left: 0; z-index: 2; animation: ball-physics 5s forwards; }
-        .tennis-ball { width: 100%; height: 100%; animation: ball-spin 5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
-
-        .racket-wrapper { position: absolute; width: 300px; height: 150px; margin-left: -75px; margin-top: -75px; top: 0; left: 0; z-index: 1; transform-origin: 260px 75px; animation: human-kinematics 5s forwards; }
-
-        /* --- FISICA SPLASH SCREEN --- */
-        @keyframes ball-physics {
-            0% { transform: translate(0, -800px) scale(1); animation-timing-function: cubic-bezier(0.55, 0.085, 0.68, 0.53); }
-            18% { transform: translate(0, 0px) scale(1.05, 0.9); animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1); }  
-            33% { transform: translate(0, -350px) scale(1); animation-timing-function: cubic-bezier(0.55, 0.085, 0.68, 0.53); } 
-            48% { transform: translate(0, 0px) scale(1.05, 0.9); animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1); }  
-            66% { transform: translate(0, -650px) scale(1); animation-timing-function: cubic-bezier(0.1, 0.8, 0.2, 1); } 
-            70% { transform: translate(0, -660px) scale(1); animation-timing-function: cubic-bezier(0.55, 0.085, 0.68, 0.53); } 
-            82% { transform: translate(20px, -200px) scale(0.95, 1.1); animation-timing-function: linear; } 
-            83% { transform: translate(140px, -140px) scaleX(2.2) scaleY(0.3); } 
-            95% { transform: translate(150vw, 50px) scaleX(2.5) scaleY(0.2); } 
-            100% { transform: translate(150vw, 50px) scale(1); }
-        }
-        @keyframes ball-spin { 0% { transform: rotate(0deg); } 80% { transform: rotate(1080deg); } 100% { transform: rotate(3500deg); } }
-        @keyframes human-kinematics {
-            0%, 15%, 18%, 28%, 48%, 58% { transform: translate(0px, 0px) rotate(0deg); }
-            19% { transform: translate(-3px, -15px) rotate(-9deg); animation-timing-function: ease-out; } 
-            21% { transform: translate(1.5px, 5px) rotate(3deg); animation-timing-function: ease-in-out; } 
-            24% { transform: translate(-0.5px, -2px) rotate(-1deg); } 
-            50% { transform: translate(-5px, -22px) rotate(-12deg); animation-timing-function: ease-out; } 
-            52% { transform: translate(2px, 8px) rotate(4deg); animation-timing-function: ease-in-out; } 
-            68% { transform: translate(-222px, -74px) rotate(-70deg); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-            82% { transform: translate(-34px, -19px) rotate(45deg); animation-timing-function: ease-out; } 
-            95%, 100% { transform: translate(-204px, 292px) rotate(130deg); }
+        body {
+            margin: 0; padding: 0; background-color: var(--bg-dark); color: #ffffff;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            height: 100vh; overflow: hidden; position: relative;
         }
 
-        /* --- UI APP E NAVIGAZIONE --- */
-        #home-screen { display: none; width: 100%; height: 100%; position: relative; }
-        .content-area { width: 100%; height: calc(100% - 110px); overflow-y: auto; padding: 40px 20px; box-sizing: border-box; color: #fff; }
-        .tab-pane { display: none; width: 100%; min-height: 100%; animation: fadeInTab 0.3s ease forwards; padding-bottom: 50px;}
-        .tab-pane.active { display: block; }
-        #tab-premium.active { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: calc(100vh - 220px); }
-        @keyframes fadeInTab { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* ================= NOTIFICHE (TOAST) ================= */
+        #toast-container { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; flex-direction: column; gap: 10px; width: 90%; max-width: 400px; pointer-events: none; }
+        .toast { background: var(--glass-bg); backdrop-filter: blur(10px); border-left: 4px solid var(--neon-main); border-radius: 8px; padding: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.8); transform: translateY(-20px); opacity: 0; animation: slideInToast 0.4s forwards; display: flex; align-items: center; justify-content: space-between; }
+        .toast-content { font-size: 13px; font-weight: bold; letter-spacing: 0.5px; }
+        @keyframes slideInToast { to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeOutToast { to { transform: translateY(-20px); opacity: 0; } }
+
+        /* ================= TOP HEADER ================= */
+        #top-header { position: absolute; top: 0; left: 0; right: 0; padding: 20px 25px; display: flex; justify-content: space-between; z-index: 50; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
+        .greeting { font-size: 22px; font-weight: 900; letter-spacing: 2px; color: #ffffff; text-shadow: 0 0 10px rgba(255,255,255,0.3); text-transform: uppercase; }
+        .greeting span { color: var(--neon-main); text-shadow: 0 0 15px rgba(204,255,0,0.5); transition: color 0.5s ease; }
+
+        /* ================= LOADER SCREEN ================= */
+        #loader-screen { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.6s ease-out; z-index: 100; background: #000; }
+        .loading-wrapper { position: relative; width: 360px; height: 120px; display: flex; flex-direction: column; justify-content: flex-end; }
+        .bar-background { width: 100%; height: 6px; background: #1e293b; border-radius: 10px; position: relative; }
+        .bar-fill { width: 0%; height: 100%; background: var(--neon-main); border-radius: 10px; box-shadow: 0 0 15px var(--neon-main), 0 0 5px var(--neon-main); transition: width 0.01s linear; }
+        .tennis-ball { position: absolute; bottom: 6px; left: 0; width: 20px; height: 20px; background: var(--neon-main); border-radius: 50%; box-shadow: 0 0 15px var(--neon-main), 0 0 5px var(--neon-main); margin-left: -10px; will-change: transform; }
+        .loading-text { margin-top: 35px; font-size: 22px; font-weight: 900; letter-spacing: 6px; text-transform: uppercase; color: #ffffff; text-shadow: 0 0 10px rgba(204, 255, 0, 0.5); }
+
+        /* ================= APP SCREEN & PAGINE ================= */
+        #app-screen { position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0; pointer-events: none; transition: opacity 0.8s ease-in; display: flex; flex-direction: column; align-items: center; padding-top: 80px; }
+        .page { display: none; width: 100%; height: calc(100vh - 80px); flex-direction: column; align-items: center; animation: fadeIn 0.3s ease-out; overflow-y: auto; padding-bottom: 120px; box-sizing: border-box; }
+        .page::-webkit-scrollbar { display: none; } 
+        .page.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .hidden { opacity: 0 !important; pointer-events: none !important; }
+        .d-none { display: none !important; }
+        .visible { opacity: 1 !important; pointer-events: auto !important; }
+
+        /* ================= SEZIONE HOME ================= */
+        .ble-panel { width: 85%; max-width: 400px; background: rgba(0, 255, 204, 0.03); border: 1px solid rgba(0, 255, 204, 0.3); border-radius: 15px; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; box-shadow: 0 0 20px rgba(0, 255, 204, 0.05); transition: all 0.4s ease; flex-shrink: 0; }
+        .ble-panel.connected { border-color: var(--neon-main); background: rgba(204, 255, 0, 0.05); box-shadow: 0 0 20px rgba(204, 255, 0, 0.15); }
+        .ble-info { display: flex; flex-direction: column; gap: 5px; }
+        .ble-title { font-weight: 900; font-size: 14px; color: #fff; letter-spacing: 1px; }
+        .ble-status { font-size: 12px; color: #ff4d4d; font-weight: bold; transition: color 0.3s; }
+        .ble-action { display: flex; align-items: center; gap: 10px; }
+        .ble-battery { font-weight: 900; font-size: 18px; color: #fff; display: none; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
+        .btn-connect { background: transparent; border: 1px solid var(--neon-main); color: var(--neon-main); padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 12px; text-transform: uppercase; transition: all 0.3s; }
+        .btn-connect:hover { background: rgba(204,255,0,0.2); }
+
+        .objectives-popup { width: 85%; max-width: 400px; background: var(--glass-bg); border: 1px solid rgba(204, 255, 0, 0.3); border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.8), inset 0 0 20px rgba(204,255,0,0.02); margin-bottom: 15px; flex-shrink: 0; }
+        .home-title { color: var(--neon-main); font-size: 16px; font-weight: 900; letter-spacing: 2px; margin-bottom: 15px; text-align: center; text-shadow: 0 0 10px rgba(204, 255, 0, 0.4); text-transform: uppercase;}
         
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
-        .header h1 { margin: 0; font-size: 1.6rem; letter-spacing: -0.5px; font-weight: 800; text-transform: uppercase; }
+        .chart-container { display: flex; justify-content: space-between; align-items: flex-end; height: 60px; margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .bar-chart { width: 15%; background: var(--theme-color); border-radius: 3px 3px 0 0; display: flex; justify-content: center; transition: all 0.5s; position: relative; }
+        .bar-val { position: absolute; top: -16px; font-size: 9px; font-weight: bold; color: #fff; }
 
-        /* --- WIDGET BLUETOOTH --- */
-        .ble-widget { background: #0a0b0e; border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 15px; cursor: pointer; border: 1px solid #333; transition: all 0.3s ease; margin-bottom: 20px; }
-        .ble-widget.disconnected { border-color: #ff4d4d; box-shadow: 0 0 15px rgba(255, 77, 77, 0.1); }
-        .ble-widget.connected { border-color: #CCFF00; box-shadow: 0 0 15px rgba(204, 255, 0, 0.1); }
-        .ble-icon { width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; transition: all 0.3s ease; }
-        .ble-widget.disconnected .ble-icon { background: rgba(255, 77, 77, 0.2); color: #ff4d4d; animation: pulse-red 2s infinite; }
-        .ble-widget.connected .ble-icon { background: rgba(204, 255, 0, 0.2); color: #CCFF00; }
-        @keyframes pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); } 70% { box-shadow: 0 0 0 10px rgba(255, 77, 77, 0); } 0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.4); } }
-        .ble-info { display: flex; flex-direction: column; flex: 1; }
-        .ble-title { font-size: 1rem; font-weight: 700; margin: 0; color: #fff; }
-        .ble-status { font-size: 0.75rem; color: #888; margin-top: 4px; font-weight: 600; text-transform: uppercase; }
-        .ble-widget.disconnected .ble-status { color: #ff4d4d; }
-        .ble-widget.connected .ble-status { color: #CCFF00; }
-        .ble-battery { display: none; align-items: center; gap: 4px; font-size: 0.8rem; font-weight: 700; color: #CCFF00; }
-        .ble-widget.connected .ble-battery { display: flex; }
-        .battery-icon { width: 22px; height: 10px; border: 2px solid #CCFF00; border-radius: 3px; position: relative; padding: 1px; box-sizing: border-box;}
-        .battery-icon::after { content: ''; position: absolute; right: -4px; top: 1px; width: 2px; height: 4px; background: #CCFF00; border-radius: 0 2px 2px 0; }
-        .battery-level { width: 84%; height: 100%; background: #CCFF00; border-radius: 1px; }
-
-        /* --- STILI GENERICI WIDGET --- */
-        .dashboard-widget { background: #0a0b0e; border-radius: 20px; border: 1px solid #1a1c22; padding: 20px; margin-bottom: 20px; }
-        .widget-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .widget-title { font-size: 0.85rem; color: #8a8f9c; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
-        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-        .stat-box { background: rgba(255,255,255,0.03); padding: 14px; border-radius: 12px; display: flex; flex-direction: column; gap: 4px; border: 1px solid rgba(255,255,255,0.05); }
-        .stat-label { font-size: 0.65rem; color: #7a7f8c; text-transform: uppercase; letter-spacing: 0.5px; }
-        .stat-value { font-size: 1.3rem; font-weight: 800; color: #ffffff; display: flex; align-items: baseline; gap: 4px; }
-        .stat-unit { font-size: 0.7rem; color: #CCFF00; font-weight: 600; }
-        .stat-highlight { color: #CCFF00; } 
-
-        /* --- OBIETTIVI SETTIMANALI (QUESTS) --- */
-        .goal-item { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; margin-bottom: 12px; transition: all 0.3s ease;}
-        .goal-item.completed { border-color: #b066ff; background: rgba(176,102,255,0.05); box-shadow: 0 0 15px rgba(176,102,255,0.1); }
-        .goal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .goal-title { font-size: 0.8rem; color: #fff; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
-        .goal-reward { font-size: 0.75rem; color: #CCFF00; font-weight: 800; background: rgba(204,255,0,0.1); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(204,255,0,0.3); }
-        .goal-bar-bg { width: 100%; height: 6px; background: #222; border-radius: 3px; overflow: hidden; margin-bottom: 10px; }
-        .goal-bar-fill { height: 100%; background: linear-gradient(90deg, #5c258d, #b066ff); width: 0%; border-radius: 3px; transition: width 1s ease-in-out; }
-        .goal-footer { display: flex; justify-content: space-between; align-items: center; }
-        .goal-progress-text { font-size: 0.7rem; color: #888; font-weight: 700; }
-        .goal-claim-btn { background: #333; color: #666; border: none; padding: 6px 14px; border-radius: 6px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; cursor: not-allowed; transition: all 0.3s; }
-        .goal-claim-btn.ready { background: #b066ff; color: #fff; cursor: pointer; box-shadow: 0 0 10px rgba(176,102,255,0.4); border: 1px solid #c999ff; }
-        .goal-claim-btn.ready:active { transform: scale(0.95); }
-        .goal-claim-btn.claimed { background: transparent; color: #CCFF00; border: 1px solid #CCFF00; cursor: default; box-shadow: none; }
-
-        /* --- TENSION RADAR CON ALLARME CREEP --- */
-        .tension-container { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
-        .tension-circle { position: relative; width: 75px; height: 75px; }
-        .tension-info { flex: 1; margin-left: 20px; }
-        .tension-btn { background: transparent; border: 1px solid #CCFF00; color: #CCFF00; border-radius: 8px; padding: 8px 12px; font-weight: 800; cursor: pointer; font-size: 0.7rem; text-transform: uppercase; transition: 0.3s; width: 100%; text-align: center; margin-top: 8px; }
-        .tension-btn:active { background: #CCFF00; color: #000; }
-        .tension-btn:disabled { border-color: #555; color: #888; cursor: not-allowed; }
-        .creep-alert { background: rgba(255, 77, 77, 0.1); border-left: 3px solid #ff4d4d; padding: 10px 12px; border-radius: 8px; font-size: 0.65rem; color: #ff4d4d; display: flex; align-items: flex-start; gap: 8px; margin-top: 15px; line-height: 1.4; animation: fadeInTab 0.3s ease; }
-        .creep-alert svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px;}
-        .tension-instructions { max-height: 0; opacity: 0; overflow: hidden; transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); font-size: 0.75rem; color: #888; margin-top: 0; }
-        .tension-instructions.active { max-height: 150px; opacity: 1; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #333; }
-        .tension-instructions p { margin: 0; line-height: 1.5; }
-        .tension-instructions strong { color: #CCFF00; }
-
-        /* --- MOMENTUM CHART WIDGET --- */
-        .momentum-sparkline { position: relative; width: 100%; height: 50px; margin: 10px 0; padding: 0 10px; box-sizing: border-box;}
-        .momentum-insight { margin-top: 15px; font-size: 0.75rem; color: #ccc; border-left: 2px solid #CCFF00; padding-left: 10px; line-height: 1.4; }
-
-        /* --- WIDGET ARM BATTERY --- */
-        .arm-battery-container { background: #111216; padding: 15px; border-radius: 12px; border: 1px solid #222; margin-top: 10px; }
-        .arm-bar-bg { width: 100%; height: 14px; background: #222; border-radius: 8px; overflow: hidden; margin: 12px 0 16px 0; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);}
-        .arm-bar-fill { height: 100%; background: linear-gradient(90deg, #ff4d4d, #ffcc00, #CCFF00); width: 65%; border-radius: 8px; box-shadow: 0 0 10px rgba(204, 255, 0, 0.4); transition: width 1s ease-in-out;}
-        .arm-status-text { font-size: 0.75rem; color: #888; line-height: 1.4; }
-        .arm-status-text strong { color: #fff; }
-
-        /* --- SELETTORE GAME / WORKOUT --- */
-        .stacked-modes { display: flex; flex-direction: column; gap: 16px; margin-bottom: 35px; }
-        .mode-card-btn { background: #0a0b0e; border: 1px solid #1a1c22; border-radius: 16px; padding: 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.3s ease; }
-        .mode-card-btn.active-game { border-color: #CCFF00; box-shadow: 0 0 20px rgba(204,255,0,0.1); background: #111218; }
-        .mode-card-btn.active-workout { border-color: #00e5ff; box-shadow: 0 0 20px rgba(0,229,255,0.1); background: #111218; }
-        .mode-text-left h3 { margin: 0 0 6px 0; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; }
-        .mode-text-left p { margin: 0; font-size: 0.75rem; color: #888; }
-        .active-game .mode-text-left h3 { color: #CCFF00; }
-        .active-workout .mode-text-left h3 { color: #00e5ff; }
-
-        /* --- VISTE MODALITA' E TIMER DI AVVIO --- */
-        .view-section { display: none; animation: fadeIn 0.4s ease; margin-bottom: 40px;}
-        .view-section.active { display: block; }
+        .objective-item { display: flex; flex-direction: column; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 3px solid #333; transition: all 0.3s; }
+        .obj-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+        .obj-info h4 { margin: 0 0 5px 0; font-size: 14px; color: #fff; text-transform: uppercase; letter-spacing: 1px;}
+        .obj-info p { margin: 0; font-size: 11px; color: #aaa; }
+        .obj-reward { color: var(--neon-main); font-weight: bold; font-size: 12px; }
+        .obj-progress-container { width: 100%; display: flex; align-items: center; gap: 10px; margin-top: 5px; }
+        .obj-progress-bg { flex: 1; height: 6px; background: #222; border-radius: 3px; position: relative; overflow: hidden; }
+        .obj-progress-fill { height: 100%; background: var(--neon-main); width: 0%; transition: width 0.5s ease; box-shadow: 0 0 10px var(--neon-main); }
+        .obj-status-text { font-size: 10px; font-weight: bold; color: #fff; min-width: 40px; text-align: right; }
+        .objective-item.completed { border-left-color: var(--neon-main); }
+        .objective-item.completed .obj-status-text { color: var(--neon-main); }
         
-        #session-loader { display: none; text-align: center; padding: 40px 0; margin-bottom: 40px;}
-        #session-loader-text { font-size: 1.2rem; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
-        .timer-number { font-size: 4.5rem; font-weight: 900; display: block; margin-top: 15px; line-height: 1; }
+        .objective-item.bonus { border-left-color: #d4af37; opacity: 0.5; }
+        .objective-item.bonus.unlocked { opacity: 1; background: rgba(212, 175, 55, 0.1); border-left-color: #d4af37; }
+        .objective-item.bonus .obj-reward { color: #d4af37; }
+        .objective-item.bonus .obj-progress-fill { background: #d4af37; box-shadow: 0 0 10px #d4af37; }
 
-        .live-match-card, .live-workout-card { border-radius: 16px; background: #050507; padding: 24px; text-align: center; position: relative;}
-        .live-match-card { border: 1px solid #CCFF00; }
-        .live-workout-card { border: 1px solid #00e5ff; }
+        /* ================= SEZIONE PREMIUM ================= */
+        .premium-container { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; width: 100%; }
+        .wave-text { font-size: 38px; font-weight: 900; letter-spacing: 6px; color: var(--neon-main); text-shadow: 0 0 15px rgba(204, 255, 0, 0.6); margin-bottom: 40px; display: flex; gap: 4px; }
+        .wave-text span { display: inline-block; animation: waveLetter 1.5s infinite ease-in-out; }
+        @keyframes waveLetter { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+        .premium-icons { display: flex; gap: 25px; align-items: center; font-size: 32px; filter: drop-shadow(0 0 10px rgba(204,255,0,0.5)); }
+        .premium-icons span { display: inline-block; animation: floatIcon 3s infinite ease-in-out; }
+        .premium-icons span:nth-child(even) { animation-delay: 1.5s; font-size: 24px; }
+        @keyframes floatIcon { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+        /* ================= SEZIONE GAME ================= */
+        .game-subnav { display: flex; background: rgba(255,255,255,0.05); border-radius: 30px; padding: 5px; margin-bottom: 25px; width: 85%; max-width: 300px; flex-shrink: 0; }
+        .game-tab { flex: 1; text-align: center; padding: 10px 0; font-size: 12px; font-weight: 900; letter-spacing: 2px; color: #777; cursor: pointer; border-radius: 25px; transition: all 0.3s; }
+        .game-tab.active { background: var(--neon-main); color: #000; box-shadow: 0 0 15px rgba(204, 255, 0, 0.5); }
+        .game-view { display: none; width: 100%; flex-direction: column; align-items: center; }
+        .game-view.active { display: flex; animation: fadeIn 0.3s; }
+
+        .session-setup { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; padding: 30px 0; animation: fadeIn 0.4s ease; }
+        .btn-start-session { background: var(--neon-main); color: #000; border: none; border-radius: 30px; padding: 18px 40px; font-size: 20px; font-weight: 900; letter-spacing: 2px; cursor: pointer; text-transform: uppercase; box-shadow: 0 0 25px rgba(204,255,0,0.4); transition: transform 0.2s, box-shadow 0.2s; }
+        .btn-start-session:active { transform: scale(0.95); }
+        .session-countdown { font-size: 140px; font-weight: 900; color: var(--neon-main); text-shadow: 0 0 40px var(--neon-main); display: flex; align-items: center; justify-content: center; height: 250px; animation: pulseCount 1s infinite; }
+        @keyframes pulseCount { 0% { transform: scale(0.9); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } 100% { transform: scale(0.9); opacity: 1; } }
+        .session-active { width: 100%; display: flex; flex-direction: column; align-items: center; animation: fadeIn 0.5s ease; }
+        .btn-end-session { margin-top: 30px; background: transparent; border: 2px solid #ff4d4d; color: #ff4d4d; border-radius: 20px; padding: 12px 35px; font-weight: 900; font-size: 14px; letter-spacing: 2px; cursor: pointer; transition: all 0.3s; text-transform: uppercase; }
+        .btn-end-session:active { transform: scale(0.95); background: rgba(255, 77, 77, 0.1); box-shadow: 0 0 15px rgba(255, 77, 77, 0.3); }
+
+        .scoreboard { width: 90%; max-width: 400px; background: var(--glass-bg); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 25px 15px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 15px 35px rgba(0,0,0,0.8); }
+        .score-names { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px; }
+        .s-name { font-weight: 900; font-size: 14px; letter-spacing: 2px; color: #aaa; flex: 1; text-align: center; }
+        .s-name.player { color: var(--neon-main); text-shadow: 0 0 10px rgba(204,255,0,0.4); }
+        .s-name-input { background: transparent; border: none; border-bottom: 1px dashed #555; color: #aaa; font-weight: 900; font-size: 14px; letter-spacing: 2px; text-align: center; width: 45%; outline: none; font-family: inherit; text-transform: uppercase; transition: color 0.3s, border-color 0.3s; padding-bottom: 3px; }
+        .s-name-input:focus { color: #fff; border-bottom-color: var(--neon-main); }
+        .score-display { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 30px; }
+        .s-points { font-size: 55px; font-weight: 900; color: #fff; width: 80px; text-align: center; line-height: 1; text-shadow: 0 0 20px rgba(255,255,255,0.2); }
+        .s-sets-container { display: flex; flex-direction: column; align-items: center; }
+        .s-sets-label { font-size: 10px; color: #777; letter-spacing: 2px; font-weight: 900; margin-bottom: 5px; }
+        .s-sets { font-size: 32px; font-weight: 900; color: var(--theme-color); text-shadow: 0 0 15px rgba(var(--theme-rgb), 0.5); }
+        .score-controls { display: flex; justify-content: space-between; width: 100%; padding: 0 15px; }
+        .control-group { display: flex; gap: 10px; }
+        .btn-score { width: 40px; height: 40px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; color: #fff; font-size: 20px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: all 0.2s; }
+        .btn-score:active { transform: scale(0.9); }
+
+        .voice-sim-panel { width: 90%; max-width: 400px; margin-top: 25px; border: 1px dashed rgba(204,255,0,0.3); border-radius: 15px; padding: 15px; text-align: center; }
+        .voice-buttons { display: flex; justify-content: center; gap: 15px; margin-top: 10px;}
+        .v-btn { background: transparent; border: 1px solid #ff4d4d; color: #ff4d4d; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: 900; font-size: 12px; letter-spacing: 1px; transition: all 0.2s; }
+        .v-btn.punto { border-color: var(--neon-main); color: var(--neon-main); }
+        .v-btn:active { transform: scale(0.95); background: rgba(255,255,255,0.1); }
+
+        .history-container { width: 90%; max-width: 400px; margin-top: 15px; display: flex; flex-direction: column; align-items: center; }
+        .history-title { font-size: 14px; font-weight: 900; color: #fff; letter-spacing: 2px; margin-bottom: 15px; text-transform: uppercase; width: 100%; border-bottom: 1px solid #333; padding-bottom: 8px; }
+        .history-list { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+        .history-item { background: rgba(255,255,255,0.05); border-left: 4px solid var(--theme-color); padding: 12px 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.3s; animation: fadeIn 0.4s; }
+        .history-item:hover { background: rgba(255,255,255,0.1); }
+        .history-item.win { border-left-color: var(--neon-main); }
+        .history-item.loss { border-left-color: #ff4d4d; }
+        .history-item.workout { border-left-color: #00e5ff; }
+        .h-info-left { display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
+        .h-date { font-size: 10px; color: #888; font-weight: bold; letter-spacing: 1px; }
+        .h-details { font-size: 13px; font-weight: bold; color: #fff; }
+        .h-score { font-size: 15px; font-weight: 900; pointer-events: none; }
+        .h-score.win { color: var(--neon-main); }
+        .h-score.loss { color: #ff4d4d; }
+        .h-score.workout { color: #00e5ff; }
+
+        .heatmap-container { display: flex; flex-direction: column; align-items: center; margin-bottom: 30px; position: relative; width: 100%; }
+        .racket-heatmap { width: 180px; height: 220px; filter: drop-shadow(0 0 15px rgba(255,255,255,0.05)); }
+        .heatmap-label { margin-top: 15px; font-size: 12px; font-weight: 900; letter-spacing: 3px; color: #aaa; text-shadow: 0 0 10px rgba(255,0,0,0.5); }
         
-        /* SCOREBOARD TENNIS MANUALE & GAMES */
-        .scoreboard { display: flex; justify-content: space-around; align-items: center; margin-bottom: 25px; }
-        .player-score { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-        .player-name { font-size: 0.7rem; color: #666; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;}
-        .score-controls { display: flex; align-items: center; gap: 10px; }
-        .score-btn { background: #111216; border: 1px solid #333; color: #fff; width: 28px; height: 28px; border-radius: 50%; font-size: 1.2rem; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; padding: 0; line-height: 0; }
-        .score-btn:active { background: #333; }
-        .score-btn.plus { border-color: rgba(204, 255, 0, 0.4); color: #CCFF00; }
-        .score-btn.minus { border-color: rgba(255, 77, 77, 0.4); color: #ff4d4d; }
-        .points { font-size: 4rem; font-weight: 900; line-height: 1; text-align: center; min-width: 80px;}
-        .points.highlight { color: #CCFF00; }
-        .points.normal { color: #ffffff; }
-        .score-divider { display: flex; align-items: center; gap: 8px; font-size: 1.8rem; font-weight: 900; background: #111216; padding: 5px 15px; border-radius: 12px; border: 1px solid #222;}
-        .game-count.highlight { color: #CCFF00; }
-        .game-count.normal { color: #fff; }
-        .score-divider span.dash { color: #555; font-weight: 300; font-size: 1.2rem; }
+        .workout-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 90%; max-width: 350px; }
+        .w-stat-box { background: var(--glass-bg); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 20px 15px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 10px 20px rgba(0,0,0,0.5); position: relative; overflow: hidden; }
+        .w-stat-box::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background: var(--neon-main); opacity: 0.5; }
+        .w-stat-val-container { display: flex; align-items: baseline; gap: 5px; margin-bottom: 5px; }
+        .w-stat-val { font-size: 28px; font-weight: 900; color: #fff; text-shadow: 0 0 15px rgba(255,255,255,0.3); transition: all 0.5s; }
+        .w-stat-unit { font-size: 12px; font-weight: bold; color: var(--neon-main); }
+        .w-stat-name { font-size: 10px; font-weight: 900; letter-spacing: 1px; color: #888; text-align: center; }
+
+        /* ================= SEZIONE AVATAR ================= */
+        .fut-card { width: 280px; min-height: 440px; flex-shrink: 0; background: linear-gradient(135deg, #111 0%, #1a1a00 50%, #000 100%); border: 2px solid var(--theme-color); border-radius: 15px 15px 40px 40px; box-shadow: 0 0 25px rgba(var(--theme-rgb), 0.3), inset 0 0 20px rgba(var(--theme-rgb), 0.15); position: relative; display: flex; flex-direction: column; overflow: hidden; margin-bottom: 20px; transition: all 0.5s ease; }
+        .fut-card::before { content: ''; position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; border: 1px solid rgba(var(--theme-rgb), 0.5); border-radius: inherit; pointer-events: none; transition: border-color 0.5s ease; }
+        .card-top { height: 45%; background-image: radial-gradient(circle at 80% 20%, rgba(var(--theme-rgb), 0.3) 0%, transparent 60%); transition: background-image 0.5s ease; }
+        .card-ovr-container { position: absolute; top: 20px; left: 20px; color: var(--theme-color); text-align: center; transition: color 0.5s ease; text-shadow: 0 0 10px rgba(var(--theme-rgb), 0.4); }
+        .card-ovr-val { font-size: 42px; font-weight: 900; line-height: 1; }
+        .card-ovr-label { font-size: 14px; font-weight: 700; letter-spacing: 2px; }
+        .card-bottom { height: 55%; padding: 0 20px 20px 20px; display: flex; flex-direction: column; align-items: center; }
+        .card-name-container { width: 100%; text-align: center; border-bottom: 1px solid rgba(var(--theme-rgb), 0.4); padding-bottom: 12px; margin-bottom: 15px; transition: border-color 0.5s ease; }
+        .card-name-text { font-size: 20px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; color: #fff; }
+        .card-stats-grid { display: flex; justify-content: space-between; width: 100%; }
+        .stat-col { display: flex; flex-direction: column; gap: 15px; width: 45%; }
+        .stat-row { display: flex; justify-content: space-between; font-size: 18px; font-weight: 800; }
+        .stat-name { color: var(--theme-color); letter-spacing: 1px; transition: color 0.5s ease; text-shadow: 0 0 5px rgba(var(--theme-rgb), 0.3); }
+        .stat-val { color: #fff; transition: color 0.3s; }
+        .stat-upgraded { color: var(--neon-main) !important; text-shadow: 0 0 10px var(--neon-main); transform: scale(1.1); transition: all 0.2s; }
+
+        .playstyle-panel { width: 85%; max-width: 320px; background: rgba(var(--theme-rgb), 0.1); border: 1px solid var(--theme-color); border-radius: 12px; padding: 15px 20px; display: flex; flex-direction: column; margin-bottom: 20px; box-shadow: 0 0 20px rgba(var(--theme-rgb), 0.25); transition: all 0.5s ease; flex-shrink: 0; }
+        .ps-header { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        .ps-title { font-weight: 900; font-size: 12px; color: var(--theme-color); letter-spacing: 2px; transition: color 0.5s ease; }
+        .ps-value { font-weight: 900; font-size: 14px; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.3); text-transform: uppercase; }
+        .ps-desc { font-size: 11px; color: #b3b3b3; margin-top: 8px; line-height: 1.5; font-style: italic; }
+
+        .growth-panel { width: 85%; max-width: 320px; background: var(--glass-bg); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 15px 20px; display: flex; flex-direction: column; margin-bottom: 20px; flex-shrink: 0; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .growth-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; width: 100%; }
+        .growth-title { font-weight: 900; font-size: 13px; color: #fff; letter-spacing: 1px; }
+        .btn-attuali { font-weight: 900; font-size: 10px; color: var(--neon-main); cursor: pointer; text-transform: uppercase; display: none; }
+        .btn-attuali:hover { text-shadow: 0 0 5px var(--neon-main); }
+        .growth-desc { font-size: 10px; color: #aaa; margin: 0 0 15px 0; line-height: 1.4; }
+        .growth-chart-container { width: 100%; height: 100px; position: relative; }
+
+        .settings-panel { width: 85%; max-width: 320px; background: var(--glass-bg); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 15px 20px; display: flex; flex-direction: column; margin-bottom: 15px; flex-shrink: 0; }
+        .name-input-group { display: flex; gap: 10px; width: 100%; }
+        .name-input-group input { flex: 1; background: rgba(0,0,0,0.5); border: 1px solid #444; border-radius: 5px; color: #fff; padding: 10px; font-size: 14px; font-weight: bold; outline: none; transition: border 0.3s; }
+        .name-input-group input:focus { border-color: var(--neon-main); }
+        .name-input-group button { background: var(--neon-main); color: #000; border: none; border-radius: 5px; padding: 0 15px; font-weight: 900; cursor: pointer; text-transform: uppercase; transition: transform 0.2s; }
+        .name-countdown-text { font-size: 10px; color: #ffaa00; margin-top: 8px; display: none; font-style: italic; }
         
-        /* WORKOUT HEATMAP E METRICHE */
-        .workout-metrics { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
-        .metric-circle { width: 80px; height: 80px; border-radius: 50%; border: 2px dashed #00e5ff; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .metric-val { font-size: 1.6rem; font-weight: 800; color: #fff; }
-        .metric-lab { font-size: 0.5rem; color: #00e5ff; text-transform: uppercase; }
-        .metric-side { display: flex; flex-direction: column; gap: 10px; }
-        .m-box { background: #111216; padding: 8px 12px; border-radius: 8px; text-align: left; border-left: 3px solid #00e5ff;}
-        .m-val { font-size: 1.1rem; font-weight: 800; color: #fff; }
-        .m-lab { font-size: 0.55rem; color: #666; text-transform: uppercase; }
-        
-        .workout-center-heatmap { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .heatmap-visual-live { position: relative; width: 85px; height: 110px; margin-top: 5px; }
-        .heat-glow-live { position: absolute; width: 45px; height: 50px; border-radius: 50%; top: 30px; left: 20px; filter: blur(4px); animation: pulse-heat 2s infinite alternate; background: radial-gradient(circle, rgba(0,229,255,0.9) 0%, rgba(0,229,255,0.4) 40%, transparent 70%); }
-
-        .voice-commands-help { font-size: 0.65rem; color: #555; background: #111216; padding: 8px 16px; border-radius: 6px; display: inline-block; margin-bottom: 20px;}
-        .btn-end-session { width: 100%; padding: 14px; background: rgba(255, 77, 77, 0.1); border: 1px solid #ff4d4d; color: #ff4d4d; font-weight: 800; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; border-radius: 8px; cursor: pointer; transition: 0.3s; }
-        .btn-end-session:active { background: #ff4d4d; color: #000; }
-
-        /* --- ACCORDION STORICO --- */
-        .section-title { font-size: 1rem; color: #ffffff; margin-bottom: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #222; padding-bottom: 10px; margin-top: 10px;}
-        .history-item { background: #0a0b0e; border: 1px solid #1a1c22; border-radius: 16px; margin-bottom: 12px; overflow: hidden; transition: all 0.3s ease; }
-        .history-summary { padding: 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        .history-left { display: flex; flex-direction: column; gap: 4px; }
-        .hist-title { font-weight: 700; font-size: 0.95rem; color: #fff; }
-        .hist-date { font-size: 0.7rem; color: #666; }
-        .hist-icon svg { width: 20px; height: 20px; stroke: #CCFF00; transition: transform 0.3s ease; }
-        .history-details { max-height: 0; opacity: 0; overflow: hidden; transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); background: #050507; }
-        .history-item.expanded { border-color: rgba(204, 255, 0, 0.3); }
-        .history-item.expanded .history-details { max-height: 800px; opacity: 1; padding: 16px; border-top: 1px solid #1a1c22; }
-        .history-item.expanded .hist-icon svg { transform: rotate(180deg); }
-        .heatmap-container { display: flex; flex-direction: column; align-items: center; margin-top: 20px; padding-top: 15px; border-top: 1px dashed #222; }
-        .heatmap-visual { position: relative; width: 100px; height: 130px; margin-top: 10px; }
-        .heat-glow { position: absolute; width: 50px; height: 55px; background: radial-gradient(circle, rgba(204,255,0,0.9) 0%, rgba(204,255,0,0.4) 40%, transparent 70%); border-radius: 50%; top: 35px; left: 25px; filter: blur(5px); animation: pulse-heat 2s infinite alternate; }
-
-        /* --- COMING SOON --- */
-        .coming-soon-text { font-size: 2.2rem; font-weight: 800; letter-spacing: 5px; margin-bottom: 30px; text-transform: uppercase; text-align: center; background: linear-gradient(90deg, #333 0%, #ffffff 40%, #CCFF00 50%, #ffffff 60%, #333 100%); background-size: 300% auto; color: transparent; -webkit-background-clip: text; background-clip: text; animation: cyber-shine 3s linear infinite; filter: drop-shadow(0px 0px 8px rgba(204, 255, 0, 0.25)); }
-        @keyframes cyber-shine { to { background-position: 300% center; } }
-        .coming-soon-icons { display: flex; gap: 20px; align-items: center; justify-content: center; }
-        .coming-soon-icons svg { width: 32px; height: 32px; stroke: #CCFF00; fill: none; stroke-width: 2.2; animation: tech-bounce 1.2s infinite ease-in-out alternate; }
-        .coming-soon-icons svg:nth-child(1) { animation-delay: 0s; } .coming-soon-icons svg:nth-child(2) { animation-delay: 0.3s; } .coming-soon-icons svg:nth-child(3) { animation-delay: 0.6s; }
-        @keyframes tech-bounce { 0% { transform: translateY(0); opacity: 0.4; } 100% { transform: translateY(-10px); opacity: 1; filter: drop-shadow(0 0 10px #CCFF00); } }
-
-        /* --- CARTA ATLETA CON IMMAGINE GENERATA --- */
-        .avatar-card-container { position: relative; width: 100%; max-width: 330px; margin: 0 auto; aspect-ratio: 300 / 450; filter: drop-shadow(0 15px 30px rgba(204, 255, 0, 0.15)); }
-        
-        .card-img-bg { 
-            width: 100%; height: 100%; display: block; position: absolute; top: 0; left: 0; 
-            z-index: 0; border-radius: 10px;
-            background-color: #0a0b0e;
-            background-image: url('CARD.png');
-            background-size: cover;
-            background-position: center;
-            transition: filter 0.4s ease;
-        }
-
-        /* OVR spostato più a destra (left: 18%) */
-        .card-overall-left { position: absolute; top: 12%; left: 18%; text-align: center; line-height: 0.85; text-shadow: 2px 2px 10px rgba(0,0,0,0.8); z-index: 1;}
-        .card-overall-left .ovr-num { font-size: 3.2rem; font-weight: 900; color: #ffffff; transition: color 0.4s; }
-        .card-overall-left .ovr-txt { display: block; font-size: 0.85rem; color: #CCFF00; font-weight: 800; letter-spacing: 2px; margin-top: 2px; transition: color 0.4s; }
-        
-        .card-name { position: absolute; top: 48.88%; height: 10%; left: 0; width: 100%; display: flex; justify-content: center; align-items: center; font-size: 1.6rem; font-weight: 900; color: #ffffff; letter-spacing: 2px; text-transform: uppercase; text-shadow: 1px 1px 5px rgba(0,0,0,0.8); z-index: 1;}
-        .card-stats-wrapper { position: absolute; top: 62.5%; left: 14%; right: 14%; display: flex; justify-content: space-between; z-index: 1;}
-        .stats-col { display: flex; flex-direction: column; gap: 8px; width: 45%; }
-        .stat-row { display: flex; justify-content: space-between; color: #ffffff; font-weight: 800; font-size: 1.1rem; }
-        .stat-row span { color: #CCFF00; font-weight: 700; font-size: 0.9rem; transition: color 0.4s;}
-
-        /* --- ARCHETIPO IA E OVR GROWTH --- */
-        .archetype-container { background: #0a0b0e; border: 1px solid #1a1c22; border-radius: 16px; padding: 18px; display: flex; align-items: center; gap: 15px; margin-top: 25px; margin-bottom: 20px; transition: all 0.4s ease; }
-        .archetype-icon { width: 50px; height: 50px; border-radius: 12px; background: rgba(204, 255, 0, 0.1); flex-shrink: 0; color: #CCFF00; display: flex; justify-content: center; align-items: center; font-size: 1.5rem; border: 1px solid rgba(204, 255, 0, 0.3); transition: all 0.4s ease; box-shadow: 0 0 10px rgba(204, 255, 0, 0.2); }
-        .archetype-info { flex: 1; text-align: left; }
-        .archetype-label { display: inline-block; font-size: 0.6rem; color: #888; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
-        .archetype-info h3 { margin: 0 0 5px 0; font-size: 1rem; color: #fff; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; transition: color 0.4s ease;}
-        .archetype-info p { margin: 0; font-size: 0.7rem; color: #666; line-height: 1.3; }
-
-        .chart-node { cursor: pointer; outline: none; -webkit-tap-highlight-color: transparent;}
-        .chart-node text { transition: all 0.3s ease; }
-        .chart-node circle.node-dot { transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
-        .chart-node:hover text { font-weight: 800; }
-
-        /* --- WIDGET INPUT NOME E NOTIFICHE --- */
-        .name-input-widget { background: #0a0b0e; border-radius: 16px; border: 1px solid #1a1c22; padding: 20px; margin-bottom: 15px; }
-        .name-input-widget h4 { margin: 0 0 6px 0; font-size: 0.9rem; color: #fff; text-transform: uppercase; letter-spacing: 1px;}
-        .name-input-widget p { margin: 0 0 15px 0; font-size: 0.75rem; color: #888; line-height: 1.4; }
-        .input-group { display: flex; gap: 10px; }
-        .name-input-widget input { flex: 1; padding: 12px 15px; border-radius: 8px; border: 1px solid #333; background: #111216; color: #CCFF00; font-size: 1rem; font-weight: 700; text-transform: uppercase; box-sizing: border-box; outline: none; transition: 0.3s; }
-        .name-input-widget input:focus:not(:disabled) { border-color: #CCFF00; box-shadow: 0 0 10px rgba(204,255,0,0.15); }
-        .name-input-widget input:disabled { opacity: 0.5; cursor: not-allowed; }
-        .save-btn { background: #CCFF00; color: #000; border: none; border-radius: 8px; font-weight: 800; padding: 0 20px; cursor: pointer; transition: 0.3s; text-transform: uppercase; font-size: 0.8rem; }
-        .save-btn:disabled { opacity: 0.5; cursor: not-allowed; background: #555; color: #888;}
-        .save-btn:active:not(:disabled) { transform: scale(0.95); }
-
-        .notif-widget { background: #0a0b0e; border-radius: 16px; border: 1px solid #1a1c22; padding: 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;}
-        .notif-text { flex: 1; padding-right: 15px; }
-        .notif-text h4 { margin: 0 0 6px 0; font-size: 0.9rem; color: #fff; text-transform: uppercase; letter-spacing: 1px;}
-        .notif-text p { margin: 0; font-size: 0.7rem; color: #888; line-height: 1.4; }
-        .switch { position: relative; display: inline-block; width: 46px; height: 26px; flex-shrink: 0;}
+        .setting-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        .setting-row span { font-weight: 700; font-size: 14px; letter-spacing: 1px; color: #ccc; }
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 26px; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 34px; box-shadow: inset 0 0 5px rgba(0,0,0,0.8); }
         .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: #CCFF00; }
-        input:checked + .slider:before { transform: translateX(20px); background-color: #000; }
+        input:checked + .slider { background-color: var(--neon-main); box-shadow: 0 0 10px rgba(204, 255, 0, 0.4); }
+        input:checked + .slider:before { transform: translateX(24px); background-color: #000; }
 
-        .bottom-nav { position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); display: flex; justify-content: space-between; align-items: center; width: 90%; max-width: 450px; background: #0a0b0e; border: 1px solid #22242a; border-radius: 50px; padding: 12px 28px; box-sizing: border-box; box-shadow: 0 15px 30px rgba(0, 0, 0, 0.9); z-index: 100; }
-        .nav-item { display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #5a5f6b; gap: 6px; transition: all 0.3s ease; width: 55px; }
-        .nav-item span { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.5px; }
-        .nav-item svg { width: 22px; height: 22px; transition: all 0.3s ease; }
-        .nav-item.active { color: #ccff00; }
-        .nav-item.active svg { filter: drop-shadow(0px 0px 6px rgba(204, 255, 0, 0.4)); }
-        .fade-out { animation: fadeOut 0.4s ease-out forwards; }
+        /* ================= POPUP DETTAGLI SESSIONE ================= */
+        #session-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 2000; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+        #session-modal.visible { opacity: 1; pointer-events: auto; }
+        .modal-content { background: var(--glass-bg); width: 85%; max-width: 350px; border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 25px; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.9); transform: translateY(20px); transition: transform 0.3s ease; }
+        #session-modal.visible .modal-content { transform: translateY(0); }
+        .modal-close { position: absolute; top: 15px; right: 20px; font-size: 24px; color: #888; cursor: pointer; font-weight: bold; }
+        .modal-title { font-size: 16px; font-weight: 900; color: var(--neon-main); letter-spacing: 2px; margin-bottom: 5px; text-transform: uppercase; }
+        .modal-date { font-size: 11px; color: #aaa; margin-bottom: 20px; }
+        .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .m-stat { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; }
+        .m-val { font-size: 20px; font-weight: 900; color: #fff; margin-bottom: 2px; }
+        .m-label { font-size: 9px; color: #aaa; letter-spacing: 1px; text-transform: uppercase; }
+        .m-score-large { font-size: 32px; font-weight: 900; color: #fff; text-align: center; margin: 15px 0; letter-spacing: 4px; }
+
+        /* ================= NAVIGAZIONE ================= */
+        .nav-oval { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 85%; max-width: 350px; background: rgba(15, 15, 15, 0.95); backdrop-filter: blur(15px); border: 1px solid rgba(204, 255, 0, 0.2); border-radius: 60px; display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.9), inset 0 0 15px rgba(255,255,255,0.03); z-index: 100; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; color: #4a637d; width: 60px; transition: all 0.3s; }
+        .nav-item svg { width: 26px; height: 26px; fill: currentColor; margin-bottom: 6px; }
+        .nav-item span { font-size: 10px; font-weight: 800; letter-spacing: 1.5px; }
+        .nav-item.active { color: var(--neon-main); transform: translateY(-4px); }
+        .nav-item.active svg { filter: drop-shadow(0 0 12px rgba(204, 255, 0, 0.8)); }
+        .nav-item.active span { text-shadow: 0 0 8px rgba(204, 255, 0, 0.6); }
+
     </style>
 </head>
 <body>
 
-    <div id="splash-container">
-        <div class="scene-wrapper">
-            <div class="ball-wrapper"><svg class="tennis-ball" viewBox="-50 -50 100 100" style="overflow: visible;"><defs><radialGradient id="ballGrad" cx="-20%" cy="-20%" r="100%"><stop offset="0%" stop-color="#f4ff99" /><stop offset="60%" stop-color="#b5e61d" /><stop offset="100%" stop-color="#69870b" /></radialGradient></defs><circle cx="0" cy="0" r="48" fill="url(#ballGrad)" /><path d="M -30 -35 Q 15 0 -30 35" stroke="#ffffff" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M 30 -35 Q -15 0 30 35" stroke="#ffffff" stroke-width="5" fill="none" stroke-linecap="round"/></svg></div>
-            <div class="racket-wrapper">
-                <svg width="300" height="150" viewBox="0 0 300 150" style="overflow: visible;">
-                    <defs>
-                        <path id="head-shape" d="M 135 75 C 135 45, 100 13, 50 13 C 20 13, 12 35, 12 75 C 12 115, 20 137, 50 137 C 100 137, 135 105, 135 75 Z" />
-                        <clipPath id="string-clip"><use href="#head-shape" /></clipPath>
-                        <pattern id="string-pattern" width="8.5" height="8.5" patternUnits="userSpaceOnUse"><line x1="0" y1="0" x2="0" y2="8.5" stroke="#e87923" stroke-width="0.85" opacity="0.95"/><line x1="0" y1="0" x2="8.5" y2="0" stroke="#e87923" stroke-width="0.85" opacity="0.95"/></pattern>
-                        <linearGradient id="tubular-red" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#cc2c1f" /><stop offset="20%" stop-color="#fa6152" /><stop offset="50%" stop-color="#ff8073" /><stop offset="80%" stop-color="#eb4536" /><stop offset="100%" stop-color="#a31f13" /></linearGradient>
-                    </defs>
-                    <polygon points="275,60 283,56 283,94 275,90" fill="#111214" />
-                    <rect x="180" y="64" width="95" height="22" fill="#1c1e22" rx="2"/>
-                    <g stroke="#08090a" stroke-width="2.5"><line x1="185" y1="64" x2="175" y2="86" /><line x1="200" y1="64" x2="190" y2="86" /><line x1="215" y1="64" x2="205" y2="86" /><line x1="230" y1="64" x2="220" y2="86" /><line x1="245" y1="64" x2="235" y2="86" /><line x1="260" y1="64" x2="250" y2="86" /><line x1="275" y1="64" x2="265" y2="86" /></g>
-                    <rect x="178" y="62" width="10" height="26" fill="#0a0a0a" rx="2"/>
-                    <path d="M 135 42 L 182 64 L 182 86 L 135 108 Z" fill="url(#tubular-red)"/>
-                    <path d="M 142 55 L 170 69 L 170 81 L 142 95 Z" fill="#000000"/>
-                    <path d="M 134 41 Q 124 75 134 109 L 145 109 Q 135 75 145 41 Z" fill="#151617"/>
-                    <use href="#head-shape" fill="none" stroke="url(#tubular-red)" stroke-width="9" />
-                    <use href="#head-shape" fill="none" stroke="#ffb3ad" stroke-width="1.5" opacity="0.4" style="transform: scale(0.97); transform-origin: 75px 75px;" />
-                    <rect x="-10" y="0" width="170" height="150" fill="url(#string-pattern)" clip-path="url(#string-clip)" />
-                </svg>
-            </div>
-        </div> 
+    <div id="toast-container"></div>
+
+    <div id="loader-screen">
+        <div class="loading-wrapper"><div class="tennis-ball" id="ball"></div><div class="bar-background"><div class="bar-fill" id="progress"></div></div></div>
+        <div class="loading-text" id="status-text">CARICAMENTO...</div>
     </div>
 
-    <div id="home-screen">
-        <div class="content-area">
+    <div id="top-header">
+        <div class="greeting">Hi <span id="display-name">PLAYER</span></div>
+    </div>
+
+    <!-- MODAL DETTAGLI SESSIONE -->
+    <div id="session-modal">
+        <div class="modal-content">
+            <div class="modal-close" onclick="closeModal()">×</div>
+            <div class="modal-title" id="m-title">TITOLO</div>
+            <div class="modal-date" id="m-date">DATA</div>
             
-            <div id="tab-home" class="tab-pane active">
-                <div class="header">
-                    <h1 id="home-greeting">Hi PLAYER</h1>
-                </div>
-
-                <div class="ble-widget disconnected" id="ble-widget" onclick="toggleBLE()">
-                    <div class="ble-icon"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"></polyline></svg></div>
-                    <div class="ble-info">
-                        <h4 class="ble-title">XIAO MG24 SENSE</h4>
-                        <span class="ble-status" id="ble-status-text">Scollegato - Clicca qui</span>
-                    </div>
-                    <div class="ble-battery" id="ble-battery">
-                        <span>84%</span>
-                        <div class="battery-icon"><div class="battery-level"></div></div>
-                    </div>
-                </div>
-
-                <div class="dashboard-widget" style="border-color: #b066ff;">
-                    <div class="widget-header">
-                        <span class="widget-title">Obiettivi Settimanali</span>
-                        <span class="widget-date" style="color: #b066ff;" id="weekly-timer">Scade tra 7g</span>
-                    </div>
-                    <p style="font-size: 0.75rem; color: #888; margin: 0 0 15px 0;">Completa le sfide giocando per potenziare le statistiche del tuo Avatar. Nuovi obiettivi ogni lunedì.</p>
-                    
-                    <div id="weekly-goals-container">
-                        </div>
-                    
-                    <button class="tension-btn" style="width:100%; margin-top:10px; border-color:#333; color:#666;" onclick="generateNewWeeklyGoals()">🔄 Simula Nuova Settimana (Test)</button>
-                </div>
-
-                <div class="dashboard-widget">
-                    <div class="widget-header"><span class="widget-title">Tension Radar</span><span class="widget-date" style="color: #666;">Salute Corde</span></div>
-                    <div class="tension-container">
-                        <div class="tension-circle">
-                            <svg viewBox="0 0 36 36" style="width: 100%; height: 100%;">
-                                <circle cx="18" cy="18" r="16" fill="none" stroke="#222" stroke-width="3" />
-                                <circle id="tension-progress" cx="18" cy="18" r="16" fill="none" stroke="#CCFF00" stroke-width="3" stroke-dasharray="100, 100" stroke-dashoffset="100" style="transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset 1s ease-out;" />
-                            </svg>
-                            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; flex-direction: column;">
-                                <span id="tension-val" style="color: #fff; font-weight: 800; font-size: 1.1rem;">--%</span>
-                            </div>
-                        </div>
-                        <div class="tension-info">
-                            <span id="tension-status" style="color: #888; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;">Nessun dato</span>
-                            <p id="tension-freq" style="font-size: 0.6rem; color: #555; margin: 4px 0;">Freq. non calcolata</p>
-                            <button class="tension-btn" id="ping-btn" onclick="startPingTest()">Esegui Nuovo Test</button>
-                        </div>
-                    </div>
-
-                    <div class="creep-alert" id="creep-alert">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                        <span><strong>ALLARME CREEP:</strong> Corde ferme da 14 gg. Rischio snervamento passivo del poliestere. Esegui la calibrazione.</span>
-                    </div>
-                    
-                    <div class="tension-instructions" id="tension-instructions">
-                        <p>1. Avvicina il piatto corde al polsino con il sensore XIAO.<br>2. Esegui <strong>10 palleggi ritmici</strong> con una pallina al centro del piatto.<br>3. Attendi il completamento dell'analisi acustica.</p>
-                    </div>
-                </div>
-
-                <div class="dashboard-widget">
-                    <div class="widget-header">
-                        <span class="widget-title">Momentum Form</span>
-                        <span class="widget-date" style="color: #CCFF00; font-weight:800;">ON FIRE 🔥</span>
-                    </div>
-                    <div class="momentum-container">
-                        <p style="font-size: 0.7rem; color: #888; margin: 0 0 15px 0;">Percentuale Sweet Spot (Ultime 5 sessioni)</p>
-                        <div class="momentum-sparkline">
-                            <svg viewBox="0 0 100 40" preserveAspectRatio="none" style="width: 100%; height: 100%;">
-                                <line x1="0" y1="10" x2="100" y2="10" stroke="#222" stroke-width="1" stroke-dasharray="2,2"/>
-                                <line x1="0" y1="30" x2="100" y2="30" stroke="#222" stroke-width="1" stroke-dasharray="2,2"/>
-                                <polyline points="0,35 25,28 50,30 75,15 92,5" fill="none" stroke="#CCFF00" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                <circle cx="92" cy="5" r="2.5" fill="#CCFF00" />
-                                <circle cx="92" cy="5" r="6" fill="#CCFF00" opacity="0.3" />
-                            </svg>
-                        </div>
-                        <div class="momentum-insight">
-                            <strong style="color:#fff;">+18% Centratura.</strong> Stai impattando la palla sempre più avanti rispetto al corpo. Continua a spingere!
-                        </div>
-                    </div>
-                </div>
-
-                <div class="dashboard-widget">
-                    <div class="widget-header">
-                        <span class="widget-title">Arm Battery</span>
-                        <span class="widget-date" style="color: #CCFF00; font-weight:800;">RECUPERO 65%</span>
-                    </div>
-                    <div class="arm-battery-container">
-                        <div class="arm-bar-bg"><div class="arm-bar-fill" style="width: 65%;"></div></div>
-                        <div class="arm-status-text"><strong>Stato Articolare:</strong> Hai assorbito 450G di impatti ieri. Consigliato allenamento leggero per evitare infiammazioni tendinee.</div>
-                    </div>
-                </div>
-
-            </div>
-
-            <div id="tab-game" class="tab-pane">
-                
-                <div class="stacked-modes">
-                    <div class="mode-card-btn" id="btn-mode-game" onclick="switchGameMode('game')">
-                        <div class="mode-text-left">
-                            <h3>Game Mode</h3>
-                            <p>Partita in diretta con punteggio manuale/vocale</p>
-                        </div>
-                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="#888" fill="none" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                    </div>
-                    
-                    <div class="mode-card-btn" id="btn-mode-workout" onclick="switchGameMode('workout')">
-                        <div class="mode-text-left">
-                            <h3>Workout Mode</h3>
-                            <p>Allenamento libero con Live Heatmap</p>
-                        </div>
-                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="#888" fill="none" stroke-width="2" id="icon-workout"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                    </div>
-                </div>
-
-                <div id="session-loader">
-                    <div id="session-loader-text" style="color: #CCFF00;"></div>
-                </div>
-
-                <div id="view-game" class="view-section">
-                    <div class="live-match-card">
-                        <div class="live-title">PARTITA IN DIRETTA</div>
-                        <div class="scoreboard">
-                            <div class="player-score">
-                                <span class="player-name">TU (PUNTO)</span>
-                                <div class="score-controls">
-                                    <button class="score-btn minus" onclick="changeScore('my', -1)">-</button>
-                                    <span class="points highlight" id="my-score">0</span>
-                                    <button class="score-btn plus" onclick="changeScore('my', 1)">+</button>
-                                </div>
-                            </div>
-                            
-                            <div class="score-divider">
-                                <span class="game-count highlight" id="my-games">0</span>
-                                <span class="dash">-</span>
-                                <span class="game-count normal" id="op-games">0</span>
-                            </div>
-                            
-                            <div class="player-score">
-                                <span class="player-name">AVVERSARIO (ERRORE)</span>
-                                <div class="score-controls">
-                                    <button class="score-btn minus" onclick="changeScore('op', -1)">-</button>
-                                    <span class="points normal" id="op-score">0</span>
-                                    <button class="score-btn plus" onclick="changeScore('op', 1)">+</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="voice-commands-help">Premi i tasti oppure pronuncia <span>"PUNTO"</span> o <span>"ERRORE"</span></div>
-                        <button class="btn-end-session" onclick="endSession('game')">Termina Partita</button>
-                    </div>
-                </div>
-
-                <div id="view-workout" class="view-section">
-                    <div class="live-workout-card">
-                        <div class="workout-title">ALLENAMENTO LIBERO</div>
-                        <div class="workout-metrics">
-                            <div class="metric-circle"><span class="metric-val">2850</span><span class="metric-lab">RPM Max</span></div>
-                            
-                            <div class="workout-center-heatmap">
-                                <span style="font-size: 0.55rem; color: #00e5ff; text-transform: uppercase; margin-bottom: 5px; font-weight: 700; letter-spacing: 1px;">Live Heatmap</span>
-                                <div class="heatmap-visual-live">
-                                    <svg viewBox="0 0 150 150" style="width: 100%; height: 100%; transform: rotate(90deg);">
-                                        <path d="M 140 75 C 140 15, 95 0, 45 0 C 15 0, 5 30, 5 75 C 5 120, 15 150, 45 150 C 95 150, 140 135, 140 75 Z" fill="none" stroke="#00e5ff" stroke-width="4" />
-                                        <g stroke="#1a1c22" stroke-width="1"><line x1="20" y1="20" x2="130" y2="130"/><line x1="20" y1="130" x2="130" y2="20"/><line x1="75" y1="0" x2="75" y2="150"/><line x1="0" y1="75" x2="150" y2="75"/></g>
-                                    </svg>
-                                    <div class="heat-glow-live"></div>
-                                </div>
-                            </div>
-
-                            <div class="metric-side">
-                                <div class="m-box"><span class="m-val">138<span style="font-size:0.7rem; color:#00e5ff"> km/h</span></span><br><span class="m-lab">Vel. Media</span></div>
-                                <div class="m-box"><span class="m-val">42</span><br><span class="m-lab">Colpi</span></div>
-                            </div>
-                        </div>
-                        <div class="voice-commands-help" style="border:1px solid #00e5ff;">Sensore IMU 6-Assi in tracciamento...</div>
-                        <button class="btn-end-session" onclick="endSession('workout')">Termina Allenamento</button>
-                    </div>
-                </div>
-
-                <h3 class="section-title">STORICO RECENTE</h3>
-                
-                <div class="dashboard-widget" style="margin-bottom: 15px;">
-                    <div class="widget-header"><span class="widget-title">Ultima Partita</span><span class="widget-date" id="home-date-game" style="color: #666;">-</span></div>
-                    <div class="stats-grid">
-                        <div class="stat-box"><span class="stat-label">Tempo di Volo</span><span class="stat-value stat-highlight">1.25<span class="stat-unit">sec</span></span></div>
-                        <div class="stat-box"><span class="stat-label">Vel. Racchetta</span><span class="stat-value">--<span class="stat-unit">km/h</span></span></div>
-                        <div class="stat-box"><span class="stat-label">Colpi Totali</span><span class="stat-value">--</span></div>
-                        <div class="stat-box"><span class="stat-label">Durata Match</span><span class="stat-value">--</span></div>
-                    </div>
-                </div>
-
-                <div class="dashboard-widget">
-                    <div class="widget-header"><span class="widget-title">Ultimo Allenamento</span><span class="widget-date" id="home-date-workout" style="color: #666;">-</span></div>
-                    <div class="stats-grid">
-                        <div class="stat-box"><span class="stat-label">Top Spin</span><span class="stat-value stat-highlight">--<span class="stat-unit">RPM</span></span></div>
-                        <div class="stat-box"><span class="stat-label">Colpi</span><span class="stat-value">--</span></div>
-                        <div class="stat-box"><span class="stat-label">Calorie</span><span class="stat-value">--<span class="stat-unit">kcal</span></span></div>
-                        <div class="stat-box"><span class="stat-label">Forza G Max</span><span class="stat-value">--<span class="stat-unit">G</span></span></div>
-                    </div>
-                </div>
-
-                <h3 class="section-title" style="margin-top: 35px;">STORICO COMPLETO</h3>
-
-                <div class="history-list" id="history-container">
-                    <p style="color: #666; font-size: 0.8rem; text-align: center; margin-top: 20px;">Nessuna sessione registrata.</p>
+            <div id="m-match-view" class="d-none">
+                <div class="m-score-large" id="m-score">0 - 0</div>
+                <div class="modal-grid">
+                    <div class="m-stat"><span class="m-val" id="m-serve">--</span><span class="m-label">Max Serve</span></div>
+                    <div class="m-stat"><span class="m-val" id="m-win">--</span><span class="m-label">Vincenti</span></div>
+                    <div class="m-stat"><span class="m-val" id="m-err">--</span><span class="m-label">Errori</span></div>
+                    <div class="m-stat"><span class="m-val" id="m-time">--</span><span class="m-label">Durata</span></div>
                 </div>
             </div>
 
-            <div id="tab-premium" class="tab-pane">
-                <h2 class="coming-soon-text">COMING SOON</h2>
-                <div class="coming-soon-icons">
-                    <svg viewBox="0 0 24 24"><ellipse cx="9" cy="9" rx="5" ry="6" transform="rotate(-45 9 9)"></ellipse><line x1="13.2" y1="13.2" x2="19" y2="19"></line><circle cx="18.5" cy="7.5" r="1.5" fill="#CCFF00" stroke="none"></circle></svg>
-                    <svg viewBox="0 0 24 24"><ellipse cx="9" cy="9" rx="5" ry="6" transform="rotate(-45 9 9)"></ellipse><line x1="13.2" y1="13.2" x2="19" y2="19"></line><circle cx="18.5" cy="7.5" r="1.5" fill="#CCFF00" stroke="none"></circle></svg>
-                    <svg viewBox="0 0 24 24"><ellipse cx="9" cy="9" rx="5" ry="6" transform="rotate(-45 9 9)"></ellipse><line x1="13.2" y1="13.2" x2="19" y2="19"></line><circle cx="18.5" cy="7.5" r="1.5" fill="#CCFF00" stroke="none"></circle></svg>
+            <div id="m-workout-view" class="d-none">
+                <div class="modal-grid" style="margin-top: 15px;">
+                    <div class="m-stat"><span class="m-val" id="m-w-speed">--</span><span class="m-label">Speed (km/h)</span></div>
+                    <div class="m-stat"><span class="m-val" id="m-w-spin">--</span><span class="m-label">Topspin (rpm)</span></div>
+                    <div class="m-stat"><span class="m-val" id="m-w-fluid">--</span><span class="m-label">Fluidità (%)</span></div>
+                    <div class="m-stat"><span class="m-val" id="m-w-accel">--</span><span class="m-label">Accel (G)</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-screen">
+        
+        <!-- HOME -->
+        <div id="page-HOME" class="page active">
+            
+            <div class="ble-panel" id="ble-panel">
+                <div class="ble-info">
+                    <span class="ble-title">XIAO MG24 SENSE</span>
+                    <span class="ble-status" id="ble-status">🔴 Disconnesso</span>
+                </div>
+                <div class="ble-action">
+                    <span class="ble-battery" id="ble-battery"></span>
+                    <button class="btn-connect" id="ble-btn" onclick="connettiXiaoBLE()">Associa</button>
                 </div>
             </div>
 
-            <div id="tab-avatar" class="tab-pane">
-                
-                <div class="avatar-card-container">
-                    <div class="card-img-bg"></div>
-
-                    <div class="card-overall-left">
-                        <span id="stat-ovr" class="ovr-num">0</span>
-                        <span class="ovr-txt" id="stat-ovr-txt">OVR</span>
-                    </div>
-                    
-                    <div class="card-name" id="card-player-name">PLAYER</div>
-                    
-                    <div class="card-stats-wrapper">
-                        <div class="stats-col stats-col-left">
-                            <div class="stat-row"><span class="stat-lbl">VEL</span> <span id="stat-vel" style="color: #fff;">0</span></div>
-                            <div class="stat-row"><span class="stat-lbl">POT</span> <span id="stat-pot" style="color: #fff;">0</span></div>
-                            <div class="stat-row"><span class="stat-lbl">DRT</span> <span id="stat-drt" style="color: #fff;">0</span></div>
-                        </div>
-                        <div class="stats-col stats-col-right">
-                            <div class="stat-row"><span class="stat-lbl">RES</span> <span id="stat-res" style="color: #fff;">0</span></div>
-                            <div class="stat-row"><span class="stat-lbl">SER</span> <span id="stat-ser" style="color: #fff;">0</span></div>
-                            <div class="stat-row"><span class="stat-lbl">ROV</span> <span id="stat-rov" style="color: #fff;">0</span></div>
-                        </div>
-                    </div>
+            <!-- OBIETTIVI SETTIMANALI CON PROGRESS BAR DINAMICA -->
+            <div class="objectives-popup">
+                <div class="home-title">OBIETTIVI SETTIMANALI</div>
+                <div id="objectives-list">
+                    <!-- Iniettati da JS -->
                 </div>
+            </div>
 
-                <div class="archetype-container">
-                    <div class="archetype-icon" id="archetype-icon">⚡</div>
-                    <div class="archetype-info">
-                        <span class="archetype-label" id="archetype-sublabel">Playstyle AI Profile</span>
-                        <h3 id="archetype-name">CALIBRAZIONE...</h3>
-                        <p id="archetype-desc">Gioca partite e allenamenti per permettere all'IA di definire il tuo stile.</p>
-                    </div>
+            <div class="objectives-popup" style="margin-bottom: 15px;">
+                <div class="home-title" style="font-size: 16px;">MOMENTUM FORM 📊</div>
+                <p style="font-size: 11px; color:#aaa; margin-bottom: 15px; text-align: center;">Centratura (Sweetspot) ultime 5 partite</p>
+                <div class="chart-container">
+                    <div class="bar-chart" style="height: 0%;"><span class="bar-val">0%</span></div>
+                    <div class="bar-chart" style="height: 0%;"><span class="bar-val">0%</span></div>
+                    <div class="bar-chart" style="height: 0%;"><span class="bar-val">0%</span></div>
+                    <div class="bar-chart" style="height: 0%;"><span class="bar-val">0%</span></div>
+                    <div class="bar-chart" style="height: 0%; background: var(--neon-main);"><span class="bar-val" style="color:var(--neon-main);">0%</span></div>
                 </div>
-
-                <div class="dashboard-widget" style="margin-top: 20px;">
-                    <div class="widget-header">
-                        <span class="widget-title">OVR Growth (Storico)</span>
-                        <span style="color: #CCFF00; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;" id="growth-status">STATISTICHE ATTUALI</span>
-                    </div>
-                    <p style="font-size: 0.7rem; color: #888; margin: 0 0 10px 0; line-height: 1.4;">Clicca sui mesi precedenti per visualizzare le tue vecchie statistiche e il tuo vecchio Playstyle direttamente sulla Carta in alto.</p>
-                    
-                    <div class="momentum-sparkline" style="height: 100px; margin-top: 15px;">
-                        <svg viewBox="0 0 300 90" style="width: 100%; height: 100%; overflow: visible;">
-                            <line x1="15" y1="20" x2="285" y2="20" stroke="#222" stroke-width="1" stroke-dasharray="2,2"/>
-                            <line x1="15" y1="50" x2="285" y2="50" stroke="#222" stroke-width="1" stroke-dasharray="2,2"/>
-                            
-                            <polyline id="trend-line" points="20,70 70,60 120,55 170,40 220,25 280,10" fill="none" stroke="#CCFF00" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="transition: stroke 0.4s ease;"/>
-                            
-                            <g class="chart-node" onclick="viewHistory(0)">
-                                <circle cx="20" cy="70" r="20" fill="transparent"/>
-                                <circle cx="20" cy="70" r="4" fill="#111" stroke="#888" stroke-width="2" class="node-dot"/>
-                                <text x="20" y="90" fill="#888" font-size="10" font-weight="600" text-anchor="middle" class="node-text">GEN</text>
-                            </g>
-                            <g class="chart-node" onclick="viewHistory(1)">
-                                <circle cx="70" cy="60" r="20" fill="transparent"/>
-                                <circle cx="70" cy="60" r="4" fill="#111" stroke="#888" stroke-width="2" class="node-dot"/>
-                                <text x="70" y="90" fill="#888" font-size="10" font-weight="600" text-anchor="middle" class="node-text">FEB</text>
-                            </g>
-                            <g class="chart-node" onclick="viewHistory(2)">
-                                <circle cx="120" cy="55" r="20" fill="transparent"/>
-                                <circle cx="120" cy="55" r="4" fill="#111" stroke="#888" stroke-width="2" class="node-dot"/>
-                                <text x="120" y="90" fill="#888" font-size="10" font-weight="600" text-anchor="middle" class="node-text">MAR</text>
-                            </g>
-                            <g class="chart-node" onclick="viewHistory(3)">
-                                <circle cx="170" cy="40" r="20" fill="transparent"/>
-                                <circle cx="170" cy="40" r="4" fill="#111" stroke="#888" stroke-width="2" class="node-dot"/>
-                                <text x="170" y="90" fill="#888" font-size="10" font-weight="600" text-anchor="middle" class="node-text">APR</text>
-                            </g>
-                            <g class="chart-node" onclick="viewHistory(4)">
-                                <circle cx="220" cy="25" r="20" fill="transparent"/>
-                                <circle cx="220" cy="25" r="4" fill="#111" stroke="#888" stroke-width="2" class="node-dot"/>
-                                <text x="220" y="90" fill="#888" font-size="10" font-weight="600" text-anchor="middle" class="node-text">MAG</text>
-                            </g>
-                            <g class="chart-node" onclick="viewHistory(5)">
-                                <circle cx="280" cy="10" r="25" fill="transparent"/>
-                                <circle cx="280" cy="10" r="7" fill="#CCFF00" stroke="#CCFF00" stroke-width="2" class="node-dot"/>
-                                <text x="280" y="90" fill="#CCFF00" font-size="10" font-weight="800" text-anchor="middle" class="node-text">OGGI</text>
-                            </g>
-                        </svg>
-                    </div>
+                <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border-left: 3px solid var(--theme-color); margin-top: 10px;">
+                    <span style="font-size: 11px; font-style: italic; color:#ccc;">"Gioca almeno una partita o un workout per generare i dati del tuo Momentum."</span>
                 </div>
+            </div>
 
-                <div class="name-input-widget">
-                    <h4>Identità Atleta</h4>
-                    <p id="name-status-msg">Modifica il nome sulla tua carta. Nota: questa operazione è consentita <strong>solo una volta ogni 7 giorni</strong>.</p>
-                    <div class="input-group">
-                        <input type="text" id="player-name-input" placeholder="Es. LUCA" maxlength="12">
-                        <button id="save-name-btn" class="save-btn">Salva</button>
-                    </div>
+            <div class="ble-panel" style="flex-direction: column; align-items: flex-start;">
+                <div style="display:flex; justify-content: space-between; width: 100%;">
+                    <span class="ble-title" style="color: #00e5ff;">TENSION RADAR 🎸</span>
+                    <span class="ble-status" id="tension-status" style="color:#aaa;">Pronto</span>
                 </div>
-
-                <div class="notif-widget">
-                    <div class="notif-text">
-                        <h4>Ricevi Notifiche</h4>
-                        <p>Ricevi una frase motivazionale a sorpresa una volta alla settimana, per caricarti prima di scendere in campo!</p>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox">
-                        <span class="slider"></span>
-                    </label>
+                <p style="font-size: 11px; color:#888; margin: 8px 0;">Fai 10 palleggi sul piatto corde. Il microfono analizzerà il suono per stimare lo stato della tensione.</p>
+                <div style="display:flex; justify-content: space-between; width: 100%; align-items: center; margin-top: 5px;">
+                    <span id="tension-result" style="font-size: 24px; font-weight: 900; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.3);">--%</span>
+                    <button class="btn-connect" id="btn-tension" onclick="startTensionTest()">INIZIA TEST</button>
                 </div>
-
             </div>
 
         </div>
 
-        <nav class="bottom-nav">
-            <a href="#" class="nav-item active" data-target="home"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12H3l9-9 9 9h-2v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9z"></path><path d="M10 22V12h4v10"></path></svg><span>HOME</span></a>
-            <a href="#" class="nav-item" data-target="game"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="9" cy="9" rx="5" ry="6" transform="rotate(-45 9 9)"></ellipse><line x1="13.2" y1="13.2" x2="19" y2="19" stroke-width="2.5"></line><circle cx="18.5" cy="7.5" r="1.5" stroke="currentColor" fill="none" stroke-width="1.5"></circle></svg><span>GAME</span></a>
-            <a href="#" class="nav-item" data-target="premium"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="3.5" r="2.2"/><circle cx="4" cy="7.5" r="2.2"/><circle cx="20" cy="7.5" r="2.2"/><path d="M 3.5 9.5 L 4.5 16 Q 12 15.2 19.5 16 L 20.5 9.5 C 17 12 14.5 12.5 12 6 C 9.5 12.5 7 12 3.5 9.5 Z" /><path d="M 4 18 Q 12 17.2 20 18 L 20 20 Q 12 19.2 4 20 Z" /></svg><span>PREMIUM</span></a>
-            <a href="#" class="nav-item" data-target="avatar"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"></circle><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"></path></svg><span>AVATAR</span></a>
-        </nav>
+        <!-- GAME -->
+        <div id="page-GAME" class="page">
+            
+            <div class="game-subnav">
+                <div class="game-tab active" id="tab-match" onclick="switchGameView('MATCH')">MATCH</div>
+                <div class="game-tab" id="tab-workout" onclick="switchGameView('WORKOUT')">WORKOUT</div>
+            </div>
 
+            <!-- View MATCH -->
+            <div class="game-view active" id="view-match">
+                <div id="pre-match" class="session-setup">
+                    <button class="btn-start-session" onclick="startCountdown('match')">INIZIO MATCH</button>
+                </div>
+                <div id="countdown-match" class="session-countdown d-none">7</div>
+                
+                <div id="active-match" class="session-active d-none">
+                    <div class="scoreboard">
+                        <div class="score-names">
+                            <div class="s-name player" id="score-player-name">TU</div>
+                            <input type="text" class="s-name-input" id="opp-input" value="AVVERSARIO" />
+                        </div>
+                        <div class="score-display">
+                            <div class="s-points" id="pt-you">0</div>
+                            <div class="s-sets-container"><div class="s-sets-label">GAME</div><div class="s-sets" id="pt-sets">0 - 0</div></div>
+                            <div class="s-points" id="pt-opp">0</div>
+                        </div>
+                        <div class="score-controls">
+                            <!-- Chiamate a changeScore() corrette -->
+                            <div class="control-group">
+                                <button class="btn-score" onclick="changeScore('you', -1)">-</button>
+                                <button class="btn-score" onclick="changeScore('you', 1)">+</button>
+                            </div>
+                            <div class="control-group">
+                                <button class="btn-score" onclick="changeScore('opp', -1)">-</button>
+                                <button class="btn-score" onclick="changeScore('opp', 1)">+</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn-end-session" onclick="endSession('match')">TERMINA SESSIONE</button>
+                </div>
+                
+                <div class="history-container" id="history-match">
+                    <div class="history-title">Storico Match</div>
+                    <div class="history-list" id="match-history-list">
+                        <!-- Popolato dal JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- View WORKOUT -->
+            <div class="game-view" id="view-workout">
+                <div id="pre-workout" class="session-setup">
+                    <button class="btn-start-session" onclick="startCountdown('workout')">INIZIO WORKOUT</button>
+                </div>
+                <div id="countdown-workout" class="session-countdown d-none">7</div>
+                
+                <div id="active-workout" class="session-active d-none">
+                    <div class="heatmap-container">
+                        <svg class="racket-heatmap" viewBox="0 0 100 120">
+                            <ellipse cx="50" cy="60" rx="45" ry="55" fill="none" stroke="#444" stroke-width="6"/>
+                            <g stroke="#333" stroke-width="1"><line x1="15" y1="20" x2="85" y2="20"/><line x1="8" y1="40" x2="92" y2="40"/><line x1="5" y1="60" x2="95" y2="60"/><line x1="8" y1="80" x2="92" y2="80"/><line x1="15" y1="100" x2="85" y2="100"/><line x1="20" y1="15" x2="20" y2="105"/><line x1="35" y1="8" x2="35" y2="112"/><line x1="50" y1="5" x2="50" y2="115"/><line x1="65" y1="8" x2="65" y2="112"/><line x1="80" y1="15" x2="80" y2="105"/></g>
+                            <circle id="heatmap-dot" cx="50" cy="60" r="22" fill="url(#heatGrad)" opacity="0" style="transition: opacity 1s, cx 0.5s, cy 0.5s;"/>
+                            <defs><radialGradient id="heatGrad"><stop offset="0%" stop-color="#ff0000"/><stop offset="30%" stop-color="#ffaa00"/><stop offset="100%" stop-color="transparent"/></radialGradient></defs>
+                        </svg>
+                        <div class="heatmap-label">HEATMAP D'IMPATTO</div>
+                    </div>
+                    <div class="workout-stats">
+                        <div class="w-stat-box"><div class="w-stat-val-container"><span class="w-stat-val" id="w-speed">0</span><span class="w-stat-unit">km/h</span></div><span class="w-stat-name">SWING SPEED</span></div>
+                        <div class="w-stat-box"><div class="w-stat-val-container"><span class="w-stat-val" id="w-spin">0</span><span class="w-stat-unit">RPM</span></div><span class="w-stat-name">TOPSPIN</span></div>
+                        <div class="w-stat-box"><div class="w-stat-val-container"><span class="w-stat-val" id="w-fluid">0</span><span class="w-stat-unit">%</span></div><span class="w-stat-name">FLUIDITÀ SWING</span></div>
+                        <div class="w-stat-box"><div class="w-stat-val-container"><span class="w-stat-val" id="w-accel">0</span><span class="w-stat-unit">G</span></div><span class="w-stat-name">ACCEL. MAX</span></div>
+                    </div>
+                    <button class="btn-end-session" onclick="endSession('workout')">TERMINA SESSIONE</button>
+                </div>
+                
+                <div class="history-container" id="history-workout">
+                    <div class="history-title">Storico Allenamenti</div>
+                    <div class="history-list" id="workout-history-list">
+                        <!-- Popolato dal JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PREMIUM -->
+        <div id="page-PREMIUM" class="page">
+            <div class="premium-container">
+                <div class="wave-text">
+                    <span style="animation-delay: 0.0s">C</span><span style="animation-delay: 0.1s">O</span><span style="animation-delay: 0.2s">M</span><span style="animation-delay: 0.3s">I</span><span style="animation-delay: 0.4s">N</span><span style="animation-delay: 0.5s">G</span>
+                    &nbsp;&nbsp;
+                    <span style="animation-delay: 0.6s">S</span><span style="animation-delay: 0.7s">O</span><span style="animation-delay: 0.8s">O</span><span style="animation-delay: 0.9s">N</span>
+                </div>
+                <div class="premium-icons"><span>🎾</span><span>🎾</span><span>🎾</span></div>
+            </div>
+        </div>
+
+        <!-- AVATAR -->
+        <div id="page-AVATAR" class="page">
+            
+            <div class="fut-card">
+                <div class="card-top"><div class="card-ovr-container"><div class="card-ovr-val" id="card-ovr">00</div><div class="card-ovr-label">OVR</div></div></div>
+                <div class="card-bottom">
+                    <div class="card-name-container"><div class="card-name-text" id="card-name">PLAYER</div></div>
+                    <div class="card-stats-grid">
+                        <div class="stat-col"><div class="stat-row"><span class="stat-name">VEL</span> <span class="stat-val" id="stat-vel">00</span></div><div class="stat-row"><span class="stat-name">POT</span> <span class="stat-val" id="stat-pot">00</span></div><div class="stat-row"><span class="stat-name">DRT</span> <span class="stat-val" id="stat-drt">00</span></div></div>
+                        <div class="stat-col"><div class="stat-row"><span class="stat-name">RES</span> <span class="stat-val" id="stat-res">00</span></div><div class="stat-row"><span class="stat-name">SERV</span> <span class="stat-val" id="stat-serv">00</span></div><div class="stat-row"><span class="stat-name">ROV</span> <span class="stat-val" id="stat-rov">00</span></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="playstyle-panel"><div class="ps-header"><span class="ps-title">PLAYSTYLE</span><span class="ps-value" id="playstyle-val">IN FASE DI STUDIO 🔍</span></div><div class="ps-desc" id="playstyle-desc">Scendi in campo, gioca partite e completa obiettivi.</div></div>
+            
+            <!-- GRAFICO OVR GROWTH -->
+            <div class="growth-panel">
+                <div class="growth-header">
+                    <div class="growth-title">OVR GROWTH (STORICO)</div>
+                    <div class="btn-attuali" id="btn-attuali" onclick="viewHistory(-1)">STATISTICHE ATTUALI</div>
+                </div>
+                <p class="growth-desc">Clicca sui mesi precedenti per visualizzare le tue vecchie statistiche e il tuo Playstyle.</p>
+                <div class="growth-chart-container">
+                    <svg id="growth-svg" viewBox="0 0 100 50" preserveAspectRatio="none" style="width:100%; height:100px; overflow:visible;">
+                        <defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--neon-main)" stop-opacity="0.6"/><stop offset="100%" stop-color="var(--neon-main)" stop-opacity="0"/></linearGradient></defs>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- NAME INPUT CON COUNTDOWN -->
+            <div class="settings-panel">
+                <div class="name-input-group">
+                    <input type="text" id="input-nome" placeholder="Nuovo Nome" maxlength="10">
+                    <button onclick="salvaNome()">Salva</button>
+                </div>
+                <div id="name-countdown" class="name-countdown-text"></div>
+            </div>
+            
+            <div class="settings-panel"><div class="setting-row"><span>Ricevi notifiche 🎾</span><label class="switch"><input type="checkbox" id="toggle-notifiche" onchange="gestisciNotifiche(this)"><span class="slider"></span></label></div></div>
+        </div>
+
+        <!-- NAVIGAZIONE PRINCIPALE -->
+        <div class="nav-oval">
+            <div class="nav-item active" onclick="cambiaPagina('HOME', this)"><svg viewBox="0 0 24 24"><path d="M12 3l10 9h-3v9h-14v-9h-3z"/></svg><span>HOME</span></div>
+            <div class="nav-item" onclick="cambiaPagina('GAME', this)"><svg viewBox="0 0 24 24"><circle cx="6" cy="7" r="2.5"/><g transform="rotate(45 12 12)"><path d="M12 2C8.96 2 6.5 5.36 6.5 9.5C6.5 12.87 8.2 15.7 10.58 16.7L9.5 20.5C9.33 21.09 9.76 21.67 10.37 21.67H13.63C14.24 21.67 14.67 21.09 14.5 20.5L13.42 16.7C15.8 15.7 17.5 12.87 17.5 9.5C17.5 5.36 15.04 2 12 2ZM12 15C10.07 15 8.5 12.54 8.5 9.5C8.5 6.46 10.07 4 12 4C13.93 4 15.5 6.46 15.5 9.5C15.5 12.54 13.93 15 12 15Z"/><rect x="10.5" y="17" width="3" height="4.5" /></g></svg><span>GAME</span></div>
+            <div class="nav-item" onclick="cambiaPagina('PREMIUM', this)"><svg viewBox="0 0 24 24"><path d="M2 18h20v2H2zM2 5l4.5 4L12 2l5.5 7L22 5v11H2V5z"/></svg><span>PREMIUM</span></div>
+            <div class="nav-item" onclick="cambiaPagina('AVATAR', this)"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg><span>AVATAR</span></div>
+        </div>
     </div>
 
     <script>
-        // --- LOGICA DI MIGRAZIONE VECCHI DATI COMPATIBILE CON DRT E ROV ---
-        const defaultStats = { ovr: 0, vel: 0, pot: 0, drt: 0, res: 0, ser: 0, rov: 0 };
+        // === 1. VARIABILI GLOBALI E RESET "DAY 1" ===
+        // Questo resetta tutta l'app se è la prima volta che esegui questa build v3
+        if (!localStorage.getItem('tb_final_build_v3')) {
+            localStorage.clear();
+            localStorage.setItem('tb_final_build_v3', 'true');
+        }
+
+        const barWidth = 360, ball = document.getElementById('ball'), progressFill = document.getElementById('progress');
+        const loaderScreen = document.getElementById('loader-screen'), appScreen = document.getElementById('app-screen'), topHeader = document.getElementById('top-header');
+        let startTime = null;
+
+        let statisticheGiocatore = JSON.parse(localStorage.getItem('tb_stats')) || { vel: 0, pot: 0, drt: 0, res: 0, serv: 0, rov: 0 };
+        let sessionData = JSON.parse(localStorage.getItem('tb_sessions')) || [];
+        let historyData = JSON.parse(localStorage.getItem('tb_ovrHistory')) || [];
         
-        function getStoredStats() {
-            let stats = JSON.parse(localStorage.getItem('bioTennisStats')) || { ...defaultStats };
-            let modified = false;
-            if (stats.tec !== undefined) { stats.drt = stats.tec; delete stats.tec; modified = true; }
-            if (stats.rot !== undefined) { stats.rov = stats.rot; delete stats.rot; modified = true; }
-            if (modified) localStorage.setItem('bioTennisStats', JSON.stringify(stats));
-            return stats;
+        const valoriPunti = ['0', '15', '30', '40', 'AD'];
+        let scoreIdxYou = 0, scoreIdxOpp = 0, gamesYou = 0, gamesOpp = 0;
+        let customViewActive = false, customViewIndex = -1;
+
+        function saveStats() {
+            localStorage.setItem('tb_stats', JSON.stringify(statisticheGiocatore));
+            localStorage.setItem('tb_sessions', JSON.stringify(sessionData));
+            localStorage.setItem('tb_ovrHistory', JSON.stringify(historyData));
         }
 
-        let activeGoals = JSON.parse(localStorage.getItem('bioTennisGoals'));
-        if(activeGoals) {
-            let goalsModified = false;
-            activeGoals.forEach(g => {
-                if(g.rewardStat === 'tec') { g.rewardStat = 'drt'; g.rewardName = g.rewardName.replace('TEC', 'DRT'); goalsModified = true; }
-                if(g.rewardStat === 'rot') { g.rewardStat = 'rov'; g.rewardName = g.rewardName.replace('ROT', 'ROV'); goalsModified = true; }
-            });
-            if (goalsModified) localStorage.setItem('bioTennisGoals', JSON.stringify(activeGoals));
+        function mostraNotifica(messaggio) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast'; toast.innerHTML = `<span class="toast-content">${messaggio}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.animation = 'fadeOutToast 0.4s forwards'; setTimeout(() => toast.remove(), 400); }, 4000);
         }
 
-        setTimeout(() => {
-            const splash = document.getElementById('splash-container');
-            const home = document.getElementById('home-screen');
-            splash.classList.add('fade-out');
-            setTimeout(() => { splash.style.display = 'none'; home.style.display = 'block'; }, 400);
-        }, 5000); 
-
-        const navItems = document.querySelectorAll('.nav-item');
-        const tabPanes = document.querySelectorAll('.tab-pane');
-
-        navItems.forEach(item => {
-            item.addEventListener('click', function(e) {
-                e.preventDefault(); 
-                navItems.forEach(nav => nav.classList.remove('active'));
-                tabPanes.forEach(pane => pane.classList.remove('active'));
-                this.classList.add('active');
-                const target = this.getAttribute('data-target');
-                document.getElementById('tab-' + target).classList.add('active');
-            });
-        });
-
-        // --- MOTORE WEB BLUETOOTH FILTRATO SULL'UUID DEL SERVIZIO ---
-        let bleDevice = null;
-        let bleCharacteristic = null;
-        const TENNIS_SERVICE_UUID = '19b10000-e8f2-537e-4f6c-d104768a1214'; 
-        const IMU_CHARACTERISTIC_UUID = '19b10001-e8f2-537e-4f6c-d104768a1214';
-
-        async function toggleBLE() {
-            const widget = document.getElementById('ble-widget');
-            const text = document.getElementById('ble-status-text');
-
-            if (!bleDevice || !bleDevice.gatt.connected) {
-                text.innerText = "Ricerca in corso...";
-                try {
-                    // Filtro basato sull'UUID del Servizio per eliminare tutti i codici sconosciuti o altri hardware
-                    // ... (resto del tuo codice precedente) ...
-
-    // Togliamo i filtri restrittivi e diciamo a Chrome di mostrare tutto
-const device = await navigator.bluetooth.requestDevice({
-    acceptAllDevices: true,
-    optionalServices: ['19b10000-e8f2-537e-4f6c-d104768a1214']
-});
-
-  const server = await device.gatt.connect();
-    
-    // --- AGGIUNTA: Diamo tempo alla schedina di "stabilizzarsi" ---
-    await new Promise(r => setTimeout(r, 1000)); 
-    // -------------------------------------------------------------
-
-    const service = await server.getPrimaryService('19b10000-e8f2-537e-4f6c-d104768a1214');
-    // 1. LA RIGA MANCANTE: Otteniamo il canale dati (UUID corretto)
-    const bleCharacteristic = await service.getCharacteristic('19b10001-e8f2-537e-4f6c-d104768a1214');
-    
-    await bleCharacteristic.startNotifications();
-    bleCharacteristic.addEventListener('characteristicvaluechanged', handleIncomingIMUData);
-
-    widget.classList.remove('disconnected');
-    widget.classList.add('connected');
-    text.innerText = "CONNESSO E IN SYNC";
-
-    // 2. CORREZIONE NOME VARIABILE: usiamo 'device' e non 'bleDevice'
-    device.addEventListener('gattserverdisconnected', onDisconnected);
-    
-} catch (error) {
-    // FAI APPARIRE UN POPUP SUL TELEFONO CON L'ERRORE ESATTO!
-    alert("Chrome dice: " + error);
-    console.error("Errore BLE:", error);
-    text.innerText = "Errore - Riprova";
-    widget.classList.remove('connected');
-    widget.classList.add('disconnected');
-}
-}
-
-function onDisconnected() {
-    const widget = document.getElementById('ble-widget');
-    const text = document.getElementById('ble-status-text');
-    widget.classList.remove('connected');
-    widget.classList.add('disconnected');
-    text.innerText = "Scollegato - Clicca qui";
-}
-
-function handleIncomingIMUData(event) {
-    // 3. LETTURA TESTO: Traduciamo i dati Bluetooth in testo leggibile (DRT e ROV)
-    const value = new TextDecoder().decode(event.target.value);
-    console.log("Colpo Ricevuto:", value);
-    
-    // Qui leghi i dati alla tua app
-    if (value === "DRT") {
-        console.log("Dritto registrato!");
-        // Aggiungi qui la logica per aggiornare il contatore DRT
-    } else if (value === "ROV") {
-        console.log("Rovescio registrato!");
-        // Aggiungi qui la logica per aggiornare il contatore ROV
-    }
-}
-
-        // --- CALIBRAZIONE E TENSION RADAR ---
-        function startPingTest() {
-            const btn = document.getElementById('ping-btn');
-            const status = document.getElementById('tension-status');
-            const freq = document.getElementById('tension-freq');
-            const val = document.getElementById('tension-val');
-            const progress = document.getElementById('tension-progress');
-            const instructions = document.getElementById('tension-instructions');
-            const creepAlert = document.getElementById('creep-alert');
-            
-            btn.disabled = true;
-            btn.innerText = "ASCOLTO IN CORSO... (Palleggia)";
-            
-            instructions.classList.add('active');
-            status.innerText = "Calibrazione Acustica...";
-            status.style.color = "#00e5ff";
-            
-            setTimeout(() => {
-                const health = 85 + Math.floor(Math.random() * 10);
-                const hz = 530 + Math.floor(Math.random() * 15);
-                
-                val.innerText = health + "%";
-                status.innerText = "Ottima Elasticità";
-                status.style.color = "#CCFF00";
-                freq.innerText = "Freq. registrata: " + hz + " Hz";
-                freq.style.color = "#888";
-                progress.style.strokeDashoffset = 100 - health;
-                
-                instructions.classList.remove('active');
-                
-                if(creepAlert) creepAlert.style.display = 'none';
-                
-                btn.innerText = "Ping Test Completato";
-                setTimeout(() => { btn.disabled = false; btn.innerText = "Esegui Nuovo Test"; }, 2000);
-            }, 6000);
+        function initDayOne() {
+            if(historyData.length === 0) {
+                const mesi = ["GEN", "FEB", "MAR", "APR", "MAG", "GIU", "LUG", "AGO", "SET", "OTT", "NOV", "DIC"];
+                const m = mesi[new Date().getMonth()];
+                historyData.push({ mese: m, stats: { vel: 0, pot: 0, drt: 0, res: 0, serv: 0, rov: 0 } });
+                saveStats();
+            }
         }
 
-        function initStats() {
-            viewHistory(5); 
+        // === 2. ANIMAZIONE INIZIALE E NAVIGAZIONE ===
+        function updateAnimation(timestamp) {
+            if (!startTime) startTime = timestamp;
+            let elapsed = timestamp - startTime;
+            let progress = Math.min(elapsed / 1500, 1); 
+            progressFill.style.width = (progress * 100) + '%';
+            ball.style.transform = `translate(${progress * barWidth}px, ${-Math.sin(((elapsed % 400) / 400) * Math.PI) * 50}px)`;
+
+            if (progress < 1) requestAnimationFrame(updateAnimation);
+            else {
+                ball.style.transform = `translate(${barWidth}px, 0px)`; loaderScreen.classList.add('hidden');
+                setTimeout(() => { 
+                    appScreen.classList.add('visible'); topHeader.style.opacity = '1'; topHeader.style.pointerEvents = 'auto'; 
+                    initDayOne(); caricaDatiUtente(); renderHistoryLists(); caricaObiettiviSettimanali(); aggiornaInterfacciaCarta();
+                }, 200);
+            }
+        }
+        requestAnimationFrame(updateAnimation);
+
+        function cambiaPagina(idPagina, elementoCliccato) {
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active')); elementoCliccato.classList.add('active');
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active')); document.getElementById('page-' + idPagina).classList.add('active');
+            if(idPagina === 'HOME') topHeader.style.opacity = '1'; else topHeader.style.opacity = '0';
         }
 
-        // --- SISTEMA OBIETTIVI SETTIMANALI ---
-        const possibleGoals = [
-            { id: 1, title: "Muro Invalicabile", desc: "Esegui 1000 colpi totali", target: 1000, rewardStat: "res", rewardName: "+2 RES", rewardVal: 2 },
-            { id: 2, title: "Cecchino", desc: "Raggiungi 80% di Sweet Spot in media", target: 80, rewardStat: "drt", rewardName: "+3 DRT", rewardVal: 3 },
-            { id: 3, title: "Braccio d'Oro", desc: "Tira 50 colpi accelerati", target: 50, rewardStat: "pot", rewardName: "+2 POT", rewardVal: 2 },
-            { id: 4, title: "Maratoneta", desc: "Gioca 3 sessioni diverse", target: 3, rewardStat: "res", rewardName: "+2 RES", rewardVal: 2 },
-            { id: 5, title: "Re delle Rotazioni", desc: "Mantieni 2500 RPM medi", target: 2500, rewardStat: "rov", rewardName: "+3 ROV", rewardVal: 3 },
-            { id: 6, title: "Servizio Letale", desc: "Esegui 30 servizi", target: 30, rewardStat: "ser", rewardName: "+2 SER", rewardVal: 2 },
-            { id: 7, title: "Scheggia", desc: "Velocità racchetta > 120km/h", target: 120, rewardStat: "vel", rewardName: "+3 VEL", rewardVal: 3 }
+        function switchGameView(view) {
+            document.getElementById('tab-match').classList.remove('active'); document.getElementById('tab-workout').classList.remove('active');
+            document.getElementById('view-match').classList.remove('active'); document.getElementById('view-workout').classList.remove('active');
+            if(view === 'MATCH') { document.getElementById('tab-match').classList.add('active'); document.getElementById('view-match').classList.add('active'); } 
+            else { document.getElementById('tab-workout').classList.add('active'); document.getElementById('view-workout').classList.add('active'); }
+        }
+
+        // === 3. MOTORE OBIETTIVI (Dinamici con Barre di Progresso - VEL & RES Modificati) ===
+        const poolNormali = [
+            { id: 'n1', t: "Servizio Perfetto", d: "Esegui 50 servizi sopra i 150 km/h", s: "serv", v: 3, target: 50 },
+            { id: 'n2', t: "Ace Machine", d: "Segna 10 Ace diretti in partita", s: "serv", v: 2, target: 10 },
+            { id: 'n3', t: "Braccio Veloce", d: "Raggiungi 120 km/h di velocità swing (20 Volte)", s: "vel", v: 3, target: 20 },
+            { id: 'n4', t: "Missile di Dritto", d: "Supera i 130 km/h con il dritto (15 Volte)", s: "vel", v: 2, target: 15 },
+            { id: 'n5', t: "Braccio d'Acciaio", d: "Supera i 4.5G di accel. media (30 Volte)", s: "pot", v: 3, target: 30 },
+            { id: 'n6', t: "Smash Devastante", d: "Chiudi 5 punti con uno smash al volo", s: "pot", v: 2, target: 5 },
+            { id: 'n7', t: "Dritto Spinnato", d: "Genera 3000+ RPM di topspin (40 Volte)", s: "drt", v: 3, target: 40 },
+            { id: 'n8', t: "Lungolinea Perfetto", d: "Metti a segno 10 vincenti di dritto", s: "drt", v: 2, target: 10 },
+            { id: 'n9', t: "Rovescio Letale", d: "Metti a segno 15 vincenti di rovescio", s: "rov", v: 3, target: 15 },
+            { id: 'n10', t: "Slice Chirurgico", d: "Mantieni la palla bassa con 20 slice", s: "rov", v: 2, target: 20 },
+            { id: 'n11', t: "Resistenza in Campo", d: "Gioca un match per almeno 45 minuti", s: "res", v: 3, target: 45 },
+            { id: 'n12', t: "Instancabile", d: "Completa 3 workout da 30 minuti", s: "res", v: 2, target: 3 }
         ];
 
-        function generateNewWeeklyGoals() {
-            let shuffled = possibleGoals.sort(() => 0.5 - Math.random());
-            activeGoals = shuffled.slice(0, 3).map(g => ({ ...g, current: 0, claimed: false }));
-            localStorage.setItem('bioTennisGoals', JSON.stringify(activeGoals));
-            renderGoals();
+        const poolMaestro = [
+            { id: 'm1', t: "🔥 MAESTRO DI POTENZA", d: "Completa le sfide per dominare la potenza", s: "pot", v: 5, target: 3 },
+            { id: 'm2', t: "🔥 MAESTRO DI VELOCITÀ", d: "Completa le sfide per swing fulminei", s: "vel", v: 5, target: 3 },
+            { id: 'm3', t: "🔥 MAESTRO DI RESISTENZA", d: "Completa le sfide per sessioni lunghe", s: "res", v: 5, target: 3 },
+            { id: 'm4', t: "🔥 MAESTRO DEL SERVIZIO", d: "Completa le sfide per battute letali", s: "serv", v: 5, target: 3 },
+            { id: 'm5', t: "🔥 MAESTRO DEL DRITTO", d: "Completa le sfide per dominare lo scambio", s: "drt", v: 5, target: 3 },
+            { id: 'm6', t: "🔥 MAESTRO DEL ROVESCIO", d: "Completa le sfide per rovesci magici", s: "rov", v: 5, target: 3 }
+        ];
+
+        function getWeekId() {
+            let d = new Date(); d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+            let yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+            let weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
+            return d.getUTCFullYear() + "-W" + weekNo;
         }
 
-        function renderGoals() {
-            const container = document.getElementById('weekly-goals-container');
-            container.innerHTML = '';
-            
-            activeGoals.forEach((goal, index) => {
-                const perc = Math.min(100, Math.floor((goal.current / goal.target) * 100));
-                const isReady = perc >= 100 && !goal.claimed;
-                const isClaimed = goal.claimed;
-                
-                let btnClass = "goal-claim-btn";
-                let btnText = "In Corso";
-                if(isReady) { btnClass += " ready"; btnText = "RISCATTA"; }
-                if(isClaimed) { btnClass += " claimed"; btnText = "COMPLETATO"; }
+        function caricaObiettiviSettimanali() {
+            let currentWeek = getWeekId();
+            let storedObj = JSON.parse(localStorage.getItem('tb_obiettivi_data'));
 
-                const html = `
-                    <div class="goal-item ${isClaimed ? 'completed' : ''}">
-                        <div class="goal-header">
-                            <span class="goal-title">${goal.title}</span>
-                            <span class="goal-reward">${goal.rewardName}</span>
+            if (!storedObj || storedObj.weekId !== currentWeek) {
+                let shuffled = poolNormali.sort(() => 0.5 - Math.random());
+                let scelti = shuffled.slice(0, 3).map(o => ({...o, current: 0}));
+                let maestro = {...poolMaestro[Math.floor(Math.random() * poolMaestro.length)], current: 0};
+                storedObj = { weekId: currentWeek, list: scelti, maestro: maestro, completati: [] };
+                localStorage.setItem('tb_obiettivi_data', JSON.stringify(storedObj));
+            }
+            renderObiettiviHTML(storedObj);
+        }
+
+        function renderObiettiviHTML(data) {
+            const container = document.getElementById('objectives-list');
+            let html = '';
+            
+            data.list.forEach(obj => {
+                const isDone = data.completati.includes(obj.id);
+                let pct = Math.min((obj.current / obj.target) * 100, 100);
+                html += `
+                    <div class="objective-item ${isDone ? 'completed' : ''}" id="obj-${obj.id}">
+                        <div class="obj-header">
+                            <div class="obj-info"><h4>${obj.t}</h4><p>${obj.d}</p></div>
+                            <div class="obj-reward">+${obj.v} ${obj.s.toUpperCase()}</div>
                         </div>
-                        <p style="font-size: 0.65rem; color: #aaa; margin: 0 0 10px 0;">${goal.desc}</p>
-                        <div class="goal-bar-bg">
-                            <div class="goal-bar-fill" style="width: ${perc}%;"></div>
+                        <div class="obj-progress-container">
+                            <div class="obj-progress-bg"><div class="obj-progress-fill" style="width: ${pct}%"></div></div>
+                            <div class="obj-status-text">${isDone ? 'FATTO ✓' : `${obj.current} / ${obj.target}`}</div>
                         </div>
-                        <div class="goal-footer">
-                            <span class="goal-progress-text">${Math.min(goal.current, goal.target)} / ${goal.target}</span>
-                            <button class="${btnClass}" ${(!isReady) ? 'disabled' : ''} onclick="claimReward(${index})">${btnText}</button>
-                        </div>
+                    </div>`;
+            });
+
+            const normaliFatti = data.list.filter(obj => data.completati.includes(obj.id)).length;
+            const maestroFatto = data.completati.includes(data.maestro.id);
+            const maestroClass = (normaliFatti > 0) ? "unlocked" : "";
+            let maestroPct = Math.min((normaliFatti / 3) * 100, 100);
+
+            html += `
+                <div class="objective-item bonus ${maestroClass} ${maestroFatto ? 'completed' : ''}" id="obj-${data.maestro.id}">
+                    <div class="obj-header">
+                        <div class="obj-info"><h4>${data.maestro.t}</h4><p>${data.maestro.d}</p></div>
+                        <div class="obj-reward">+${data.maestro.v} ${data.maestro.s.toUpperCase()}</div>
                     </div>
-                `;
-                container.insertAdjacentHTML('beforeend', html);
-            });
+                    <div class="obj-progress-container">
+                        <div class="obj-progress-bg"><div class="obj-progress-fill" style="width: ${maestroPct}%"></div></div>
+                        <div class="obj-status-text">${maestroFatto ? 'FATTO ✓' : `${normaliFatti} / 3`}</div>
+                    </div>
+                </div>`;
+
+            container.innerHTML = html;
         }
 
-        function claimReward(index) {
-            let goal = activeGoals[index];
-            if(goal.current >= goal.target && !goal.claimed) {
-                let stats = getStoredStats();
-                stats[goal.rewardStat] = Math.min(99, stats[goal.rewardStat] + goal.rewardVal);
-                stats.ovr = Math.floor((stats.vel + stats.pot + stats.drt + stats.res + stats.ser + stats.rov) / 6);
-                
-                localStorage.setItem('bioTennisStats', JSON.stringify(stats));
-                
-                goal.claimed = true;
-                localStorage.setItem('bioTennisGoals', JSON.stringify(activeGoals));
-                
-                initStats(); 
-                renderGoals(); 
-                alert(`Complimenti! Hai sbloccato ${goal.rewardName}. La tua carta Avatar è stata aggiornata.`);
+        // Simula la ricezione dati dalla XIAO a fine sessione che fa crescere gli obiettivi
+        function elaboraDatiXIAOPerObiettivi() {
+            let objs = JSON.parse(localStorage.getItem('tb_obiettivi_data'));
+            if(!objs) return;
+
+            let aggiornato = false;
+
+            objs.list.forEach(o => {
+                if(!objs.completati.includes(o.id)) {
+                    let progresso = Math.floor(Math.random() * (o.target / 2)) + 1; // Aggiunge dati finti dal sensore
+                    o.current += progresso;
+
+                    if(o.current >= o.target) {
+                        o.current = o.target;
+                        objs.completati.push(o.id);
+                        statisticheGiocatore[o.s] += o.v; 
+                        aggiornato = true;
+                        mostraNotifica(`Obiettivo Raggiunto! +${o.v} ${o.s.toUpperCase()} ⚡`);
+                    }
+                }
+            });
+
+            // Sblocca Maestro
+            let normaliFattiOra = objs.list.filter(o => objs.completati.includes(o.id)).length;
+            if(normaliFattiOra === 3 && !objs.completati.includes(objs.maestro.id)) {
+                objs.maestro.current = 3;
+                objs.completati.push(objs.maestro.id);
+                statisticheGiocatore[objs.maestro.s] += objs.maestro.v;
+                aggiornato = true;
+                setTimeout(() => mostraNotifica(`🔥 SFIDA MAESTRO COMPLETATA! +${objs.maestro.v} ${objs.maestro.s.toUpperCase()}`), 2000);
             }
+
+            localStorage.setItem('tb_obiettivi_data', JSON.stringify(objs));
+            renderObiettiviHTML(objs);
+            
+            if(aggiornato) { saveStats(); aggiornaInterfacciaCarta(); }
         }
 
-        if (!activeGoals || activeGoals.length === 0) {
-            generateNewWeeklyGoals();
-        } else {
-            renderGoals();
-        }
-
-        // --- HISTORICAL E MACCHINA DEL TEMPO ---
-        const historicalStats = [
-            { month: 'GENNAIO', ovr: 12, vel: 12, pot: 14, drt: 10, res: 15, ser: 8, rov: 13 },
-            { month: 'FEBBRAIO', ovr: 14, vel: 13, pot: 16, drt: 12, res: 16, ser: 10, rov: 15 },
-            { month: 'MARZO', ovr: 16, vel: 14, pot: 19, drt: 14, res: 18, ser: 11, rov: 18 },
-            { month: 'APRILE', ovr: 18, vel: 15, pot: 22, drt: 18, res: 20, ser: 12, rov: 20 },
-            { month: 'MAGGIO', ovr: 19, vel: 15, pot: 24, drt: 20, res: 22, ser: 13, rov: 21 }
-        ];
-
-        function viewHistory(index) {
-            let statsToShow;
-            const statusEl = document.getElementById('growth-status');
-            const cardImgBg = document.querySelector('.card-img-bg');
-            const statLabels = document.querySelectorAll('.stat-lbl');
-            const ovrTxt = document.getElementById('stat-ovr-txt');
-            const subLabel = document.getElementById('archetype-sublabel');
-            
-            const dots = document.querySelectorAll('.node-dot');
-            const texts = document.querySelectorAll('.node-text');
-            
-            dots.forEach((dot, i) => {
-                if (i === index) {
-                    dot.setAttribute('fill', '#CCFF00');
-                    dot.setAttribute('stroke', '#CCFF00');
-                    dot.setAttribute('r', '7');
+        // === 4. NOME UTENTE E COUNTDOWN 7 GIORNI ===
+        function checkNameCooldown() {
+            const ultimoCambio = localStorage.getItem('tennisAppLastNameChange');
+            const countdownEl = document.getElementById('name-countdown');
+            if(ultimoCambio) {
+                const oraCorrente = Date.now();
+                const setteGiorniInMs = 7 * 24 * 60 * 60 * 1000;
+                const passato = oraCorrente - parseInt(ultimoCambio);
+                if(passato < setteGiorniInMs) {
+                    const rimanente = setteGiorniInMs - passato;
+                    const giorni = Math.ceil(rimanente / (1000 * 60 * 60 * 24));
+                    countdownEl.innerText = `⏳ Modificabile tra ${giorni} giorn${giorni>1?'i':'o'}`;
+                    countdownEl.style.display = 'block';
                 } else {
-                    dot.setAttribute('fill', '#111');
-                    dot.setAttribute('stroke', '#888');
-                    dot.setAttribute('r', '4');
+                    countdownEl.style.display = 'none';
                 }
-            });
-
-            texts.forEach((text, i) => {
-                if(i === index) {
-                    text.setAttribute('fill', '#CCFF00');
-                    text.setAttribute('font-weight', '800');
-                } else {
-                    text.setAttribute('fill', '#888');
-                    text.setAttribute('font-weight', '600');
-                }
-            });
-
-            if (index === 5) {
-                statsToShow = getStoredStats();
-                statusEl.innerText = "STATISTICHE ATTUALI";
-                statusEl.style.color = "#CCFF00";
-                subLabel.innerText = "Playstyle AI Profile - ATTUALE";
-                document.getElementById('trend-line').setAttribute('stroke', '#CCFF00');
-                
-                if(cardImgBg) cardImgBg.style.filter = "none";
-                statLabels.forEach(s => s.style.color = '#CCFF00');
-                ovrTxt.style.color = '#CCFF00';
             } else {
-                statsToShow = historicalStats[index];
-                statusEl.innerText = "STORICO: " + statsToShow.month;
-                statusEl.style.color = "#00e5ff";
-                subLabel.innerText = "Playstyle AI Profile - " + statsToShow.month;
-                document.getElementById('trend-line').setAttribute('stroke', '#555');
-                
-                if(cardImgBg) cardImgBg.style.filter = "hue-rotate(180deg) saturate(1.5) brightness(0.8)"; 
-                statLabels.forEach(s => s.style.color = '#00e5ff');
-                ovrTxt.style.color = '#00e5ff';
+                countdownEl.style.display = 'none';
             }
-
-            document.getElementById('stat-ovr').innerText = statsToShow.ovr;
-            document.getElementById('stat-vel').innerText = statsToShow.vel;
-            document.getElementById('stat-pot').innerText = statsToShow.pot;
-            document.getElementById('stat-drt').innerText = statsToShow.drt;
-            document.getElementById('stat-res').innerText = statsToShow.res;
-            document.getElementById('stat-ser').innerText = statsToShow.ser;
-            document.getElementById('stat-rov').innerText = statsToShow.rov;
-            
-            updateArchetype(statsToShow, index !== 5);
         }
 
-        function updateArchetype(stats, isHistorical = false) {
-            const nameEl = document.getElementById('archetype-name');
-            const descEl = document.getElementById('archetype-desc');
-            const iconEl = document.getElementById('archetype-icon');
+        function caricaDatiUtente() {
+            let nomeSalvato = localStorage.getItem('tennisAppName') || 'PLAYER';
+            document.getElementById('display-name').innerText = nomeSalvato;
+            document.getElementById('card-name').innerText = nomeSalvato;
+            document.getElementById('score-player-name').innerText = nomeSalvato;
+            document.getElementById('toggle-notifiche').checked = localStorage.getItem('tennisAppNotifiche') === 'true';
+            checkNameCooldown();
+        }
 
-            if (stats.ovr === 0) {
-                nameEl.innerText = "ROOKIE";
-                descEl.innerText = "Gioca partite o allenamenti per permettere all'IA di definire il tuo stile.";
-                iconEl.innerHTML = "🌱";
-                iconEl.style.color = "#888";
-                iconEl.style.borderColor = "#333";
-                iconEl.style.background = "#111";
-                iconEl.style.boxShadow = "none";
+        function salvaNome() {
+            const inputNome = document.getElementById('input-nome');
+            const nuovoNome = inputNome.value.trim().toUpperCase();
+            if (nuovoNome === "") return;
+            
+            const ultimoCambio = localStorage.getItem('tennisAppLastNameChange');
+            const oraCorrente = Date.now(), setteGiorniInMs = 7 * 24 * 60 * 60 * 1000;
+            
+            if (ultimoCambio && (oraCorrente - parseInt(ultimoCambio)) < setteGiorniInMs) {
+                mostraNotifica("⚠️ Devi attendere 7 giorni per cambiare nome.");
                 return;
             }
 
-            const maxStat = Math.max(stats.vel, stats.pot, stats.drt, stats.res, stats.ser, stats.rov);
-            let archetype = "";
-            let desc = "";
-            let icon = "";
-            let color = "";
-
-            if (maxStat === stats.pot || maxStat === stats.vel) {
-                archetype = "AGGRESSIVE BASELINER";
-                desc = "Dominio da fondo campo. Sfrutti la potenza per rubare tempo all'avversario e chiudere il punto.";
-                icon = "🔥";
-                color = isHistorical ? "#00e5ff" : "#ff4d4d"; 
-            } else if (maxStat === stats.drt || maxStat === stats.rov) {
-                archetype = "TACTICAL SPINNER";
-                desc = "Controllo totale. Usi angoli stretti e rotazioni pesanti per muovere l'avversario fuori dal campo.";
-                icon = "🌪️";
-                color = isHistorical ? "#00e5ff" : "#00e5ff"; 
-            } else if (maxStat === stats.res) {
-                archetype = "COUNTERPUNCHER";
-                desc = "Muro invalicabile. Eccelli in difesa e logori mentalmente e fisicamente chi hai di fronte.";
-                icon = "🛡️";
-                color = isHistorical ? "#00e5ff" : "#CCFF00"; 
-            } else if (maxStat === stats.ser) {
-                archetype = "SERVE & VOLLEY";
-                desc = "Rete e istinto. Accorci gli scambi affidandoti a un servizio esplosivo e chiusure repentine.";
-                icon = "⚡";
-                color = isHistorical ? "#00e5ff" : "#b066ff"; 
-            }
-
-            nameEl.innerText = archetype;
-            nameEl.style.color = color;
-            descEl.innerText = desc;
-            iconEl.innerHTML = icon;
-            iconEl.style.color = color;
-            iconEl.style.borderColor = color;
-            iconEl.style.background = `rgba(255, 255, 255, 0.05)`; 
-            iconEl.style.boxShadow = `0 0 15px ${color}40`;
-        }
-
-        // --- SCORING ENGINE ---
-        const tennisPoints = ['0', '15', '30', '40', 'AD'];
-        let myScoreIdx = 0; let opScoreIdx = 0;
-        let myGames = 0; let opGames = 0;
-
-        function updateScoreUI() {
-            document.getElementById('my-score').innerText = tennisPoints[myScoreIdx];
-            document.getElementById('op-score').innerText = tennisPoints[opScoreIdx];
-            document.getElementById('my-games').innerText = myGames;
-            document.getElementById('op-games').innerText = opGames;
-        }
-
-        function changeScore(player, delta) {
-            if(player === 'my') {
-                myScoreIdx += delta;
-                if(myScoreIdx < 0) myScoreIdx = 0;
-                if(myScoreIdx > 3 && opScoreIdx < 3) { winGame('my'); } 
-                else if (myScoreIdx === 4 && opScoreIdx === 4) { myScoreIdx = 3; opScoreIdx = 3; } 
-                else if (myScoreIdx > 4) { winGame('my'); } 
-                else if (myScoreIdx === 4 && opScoreIdx === 3) { opScoreIdx = 3; }
-            } else {
-                opScoreIdx += delta;
-                if(opScoreIdx < 0) opScoreIdx = 0;
-                if(opScoreIdx > 3 && myScoreIdx < 3) { winGame('op'); } 
-                else if (opScoreIdx === 4 && myScoreIdx === 4) { myScoreIdx = 3; opScoreIdx = 3; } 
-                else if (opScoreIdx > 4) { winGame('op'); } 
-                else if (opScoreIdx === 4 && myScoreIdx === 3) { myScoreIdx = 3; }
-            }
-            updateScoreUI();
-        }
-
-        function winGame(player) {
-            if(player === 'my') myGames++; else opGames++;
-            myScoreIdx = 0; opScoreIdx = 0;
-        }
-
-        function resetTennisScore() {
-            myScoreIdx = 0; opScoreIdx = 0; myGames = 0; opGames = 0;
-            updateScoreUI();
-        }
-
-        let sessionTimerInterval;
-
-        function switchGameMode(mode) {
-            if (sessionTimerInterval) clearInterval(sessionTimerInterval);
-
-            document.getElementById('view-game').classList.remove('active');
-            document.getElementById('view-workout').classList.remove('active');
-            document.getElementById('btn-mode-game').classList.remove('active-game');
-            document.getElementById('btn-mode-workout').classList.remove('active-workout');
+            localStorage.setItem('tennisAppName', nuovoNome);
+            localStorage.setItem('tennisAppLastNameChange', oraCorrente.toString());
             
-            document.querySelector('#btn-mode-game svg').setAttribute('stroke', '#888');
-            document.getElementById('icon-workout').setAttribute('stroke', '#888');
-            
-            if(mode === 'game') {
-                document.getElementById('btn-mode-game').classList.add('active-game');
-                document.querySelector('#btn-mode-game svg').setAttribute('stroke', '#CCFF00');
-            } else {
-                document.getElementById('btn-mode-workout').classList.add('active-workout');
-                document.getElementById('icon-workout').setAttribute('stroke', '#00e5ff');
-            }
+            document.getElementById('display-name').innerText = nuovoNome; 
+            document.getElementById('card-name').innerText = nuovoNome;
+            document.getElementById('score-player-name').innerText = nuovoNome;
+            inputNome.value = "";
+            checkNameCooldown();
+        }
 
-            const loader = document.getElementById('session-loader');
-            const loaderText = document.getElementById('session-loader-text');
-            loader.style.display = 'block';
-            
-            const typeText = mode === 'game' ? 'PARTITA' : 'ALLENAMENTO';
-            const highlightColor = mode === 'game' ? '#CCFF00' : '#00e5ff';
-            
-            let countdown = 10;
-            loaderText.innerHTML = `INIZIO ${typeText} TRA<br><span class="timer-number">${countdown}</span>`;
-            loaderText.style.color = highlightColor;
 
-            sessionTimerInterval = setInterval(() => {
-                countdown--;
-                if (countdown > 0) {
-                    loaderText.innerHTML = `INIZIO ${typeText} TRA<br><span class="timer-number">${countdown}</span>`;
-                } else {
-                    clearInterval(sessionTimerInterval);
-                    loader.style.display = 'none';
-                    if(mode === 'game') resetTennisScore();
-                    document.getElementById('view-' + mode).classList.add('active');
+        // === 5. GESTIONE TABELLONE E SESSIONI (No Pop-ups durante) ===
+        function startCountdown(type) {
+            document.getElementById('pre-' + type).classList.add('d-none'); document.getElementById('history-' + type).classList.add('d-none');
+            const countEl = document.getElementById('countdown-' + type); countEl.classList.remove('d-none');
+            let count = 7; countEl.innerText = count;
+            let interval = setInterval(() => {
+                count--;
+                if(count > 0) { countEl.innerText = count; } 
+                else {
+                    clearInterval(interval); countEl.classList.add('d-none'); document.getElementById('active-' + type).classList.remove('d-none');
+                    if(type === 'workout') {
+                        document.getElementById('w-speed').innerText = '0'; document.getElementById('w-spin').innerText = '0';
+                        document.getElementById('w-fluid').innerText = '0'; document.getElementById('w-accel').innerText = '0';
+                        document.getElementById('heatmap-dot').style.opacity = '0';
+                        setTimeout(() => {
+                            document.getElementById('w-speed').innerText = Math.floor(Math.random() * 40 + 100); document.getElementById('w-spin').innerText = Math.floor(Math.random() * 1000 + 2000);
+                            document.getElementById('w-fluid').innerText = Math.floor(Math.random() * 30 + 60); document.getElementById('w-accel').innerText = (Math.random() * 2 + 2).toFixed(1);
+                            const dot = document.getElementById('heatmap-dot'); dot.style.opacity = '0.85'; dot.setAttribute('cx', Math.random()*20+40); dot.setAttribute('cy', Math.random()*20+50);
+                        }, 4000);
+                    }
                 }
             }, 1000);
         }
 
-        function endSession(mode) {
-            if (sessionTimerInterval) clearInterval(sessionTimerInterval);
+        function endSession(type) {
+            document.getElementById('active-' + type).classList.add('d-none');
+            document.getElementById('pre-' + type).classList.remove('d-none');
+            document.getElementById('history-' + type).classList.remove('d-none');
             
-            document.getElementById('view-' + mode).classList.remove('active');
-            document.getElementById('btn-mode-' + mode).classList.remove(mode === 'game' ? 'active-game' : 'active-workout');
-            
-            document.querySelector('#btn-mode-game svg').setAttribute('stroke', '#888');
-            document.getElementById('icon-workout').setAttribute('stroke', '#888');
+            const oggi = new Date(); const mesi = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
+            const dataStr = `${oggi.getDate().toString().padStart(2,'0')} ${mesi[oggi.getMonth()]} - ${oggi.getHours().toString().padStart(2,'0')}:${oggi.getMinutes().toString().padStart(2,'0')}`;
+            let newSession = { id: Date.now(), type: type, date: dataStr };
 
-            let stats = getStoredStats();
-            
-            stats.vel = Math.min(99, stats.vel + Math.floor(Math.random() * 3) + 1);
-            stats.pot = Math.min(99, stats.pot + Math.floor(Math.random() * 3) + 1);
-            stats.drt = Math.min(99, stats.drt + Math.floor(Math.random() * 4) + 1);
-            stats.res = Math.min(99, stats.res + Math.floor(Math.random() * 3) + 1);
-            stats.ser = Math.min(99, stats.ser + Math.floor(Math.random() * 2) + 1);
-            stats.rov = Math.min(99, stats.rov + Math.floor(Math.random() * 3) + 1);
-            stats.ovr = Math.floor((stats.vel + stats.pot + stats.drt + stats.res + stats.ser + stats.rov) / 6);
-            
-            localStorage.setItem('bioTennisStats', JSON.stringify(stats));
-            viewHistory(5);
+            if(type === 'match') {
+                let msg = document.getElementById('no-match-msg'); if(msg) msg.remove();
+                const you = gamesYou, opp = gamesOpp, oppName = document.getElementById('opp-input').value || "Avversario";
+                newSession.opp = oppName; newSession.win = (you >= opp); newSession.score = `${Math.max(you,opp)}-${Math.min(you,opp)}`;
+                newSession.details = { maxServe: Math.floor(Math.random()*40+140)+' km/h', winners: Math.floor(Math.random()*20), unforced: Math.floor(Math.random()*15) };
+                
+                scoreIdxYou = 0; scoreIdxOpp = 0; gamesYou = 0; gamesOpp = 0; aggiornaUIpunteggio();
+            } else if(type === 'workout') {
+                let msg = document.getElementById('no-workout-msg'); if(msg) msg.remove();
+                newSession.details = { speed: document.getElementById('w-speed').innerText, spin: document.getElementById('w-spin').innerText, fluid: document.getElementById('w-fluid').innerText, accel: document.getElementById('w-accel').innerText };
+            }
 
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+            sessionData.unshift(newSession); saveStats(); renderHistoryLists(); 
+            elaboraDatiXIAOPerObiettivi(); // La carta cresce qui
+        }
 
-            const historyHtml = `
-                <div class="history-item" onclick="toggleHistory(this)">
-                    <div class="history-summary">
-                        <div class="history-left">
-                            <span class="hist-title">${mode === 'game' ? 'Partita Registrata' : 'Allenamento Libero'}</span>
-                            <span class="hist-date">${dateStr} • Registrata da XIAO</span>
-                        </div>
-                        <div class="hist-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></div>
-                    </div>
-                    <div class="history-details">
-                        <div class="stats-grid">
-                            <div class="stat-box"><span class="stat-label">Sweet Spot</span><span class="stat-value stat-highlight">${60 + Math.floor(Math.random() * 35)}<span class="stat-unit">%</span></span></div>
-                            <div class="stat-box"><span class="stat-label">Colpi</span><span class="stat-value">${100 + Math.floor(Math.random() * 300)}</span></div>
-                        </div>
-                        <div class="heatmap-container">
-                            <span class="stat-label">Mappa d'Impatto (Sweet Spot)</span>
-                            <div class="heatmap-visual" style="width: 85px; height: 110px;">
-                                <svg viewBox="0 0 150 150" style="width: 100%; height: 100%; transform: rotate(90deg);">
-                                    <path d="M 140 75 C 140 15, 95 0, 45 0 C 15 0, 5 30, 5 75 C 5 120, 15 150, 45 150 C 95 150, 140 135, 140 75 Z" fill="none" stroke="#333" stroke-width="4" />
-                                    <g stroke="#1a1c22" stroke-width="1"><line x1="20" y1="20" x2="130" y2="130"/><line x1="20" y1="130" x2="130" y2="20"/><line x1="75" y1="0" x2="75" y2="150"/><line x1="0" y1="75" x2="150" y2="75"/></g>
-                                </svg>
-                                <div class="heat-glow" style="width: 45px; height: 50px; top: 30px; left: 20px;"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
+        function aggiornaUIpunteggio() {
+            document.getElementById('pt-you').innerText = valoriPunti[scoreIdxYou];
+            document.getElementById('pt-opp').innerText = valoriPunti[scoreIdxOpp];
+            document.getElementById('pt-sets').innerText = `${gamesYou} - ${gamesOpp}`;
+        }
+        function changeScore(chi, azione) {
+            if(azione === 1) { 
+                if(chi === 'you') { if (scoreIdxYou === 3 && scoreIdxOpp < 3) winGame('you'); else if (scoreIdxYou === 3 && scoreIdxOpp === 3) scoreIdxYou = 4; else if (scoreIdxYou === 3 && scoreIdxOpp === 4) scoreIdxOpp = 3; else if (scoreIdxYou === 4) winGame('you'); else scoreIdxYou++; } 
+                else { if (scoreIdxOpp === 3 && scoreIdxYou < 3) winGame('opp'); else if (scoreIdxOpp === 3 && scoreIdxYou === 3) scoreIdxOpp = 4; else if (scoreIdxOpp === 3 && scoreIdxYou === 4) scoreIdxYou = 3; else if (scoreIdxOpp === 4) winGame('opp'); else scoreIdxOpp++; }
+            } else { if(chi === 'you' && scoreIdxYou > 0) scoreIdxYou--; if(chi === 'opp' && scoreIdxOpp > 0) scoreIdxOpp--; }
+            aggiornaUIpunteggio();
+        }
+        function winGame(chi) { if(chi === 'you') gamesYou++; else gamesOpp++; scoreIdxYou = 0; scoreIdxOpp = 0; }
+        
+        function renderHistoryLists() {
+            const mList = document.getElementById('match-history-list'); const wList = document.getElementById('workout-history-list');
+            const matches = sessionData.filter(s => s.type === 'match'); const workouts = sessionData.filter(s => s.type === 'workout');
             
-            const historyContainer = document.getElementById('history-container');
-            if(historyContainer.innerText.includes('Nessuna sessione')) historyContainer.innerHTML = '';
-            
-            historyContainer.insertAdjacentHTML('afterbegin', historyHtml);
-
-            if(mode === 'game') document.getElementById('home-date-game').innerText = dateStr;
-            if(mode === 'workout') document.getElementById('home-date-workout').innerText = dateStr;
-            
-            if (activeGoals) {
-                activeGoals.forEach(g => {
-                    if (!g.claimed) {
-                        g.current += Math.floor(Math.random() * (g.target / 2)) + 1; 
-                    }
+            if(matches.length > 0) {
+                mList.innerHTML = '';
+                matches.forEach(s => {
+                    const wClass = s.win ? 'win' : 'loss'; const wText = s.win ? 'VITTORIA' : 'SCONFITTA';
+                    mList.innerHTML += `<div class="history-item ${wClass}" onclick="openModal(${s.id})"><div class="h-info-left"><span class="h-date">${s.date}</span><span class="h-details">Vs ${s.opp}</span></div><div class="h-score ${wClass}">${wText} ${s.score}</div></div>`;
                 });
-                localStorage.setItem('bioTennisGoals', JSON.stringify(activeGoals));
-                renderGoals();
+            } else { mList.innerHTML = `<div id="no-match-msg" style="text-align:center; color:#555; font-size:12px; margin-top:10px;">Nessun dato registrato. Inizia a giocare!</div>`; }
+
+            if(workouts.length > 0) {
+                wList.innerHTML = '';
+                workouts.forEach(s => {
+                    wList.innerHTML += `<div class="history-item workout" onclick="openModal(${s.id})"><div class="h-info-left"><span class="h-date">${s.date}</span><span class="h-details">Workout Libero</span></div><div class="h-score workout">VEDI STATS</div></div>`;
+                });
+            } else { wList.innerHTML = `<div id="no-workout-msg" style="text-align:center; color:#555; font-size:12px; margin-top:10px;">Nessun allenamento registrato. Suda un po'!</div>`; }
+        }
+
+        // === 6. POPUP DETTAGLI SESSIONE ===
+        function openModal(id) {
+            const session = sessionData.find(s => s.id === id);
+            if(!session) return;
+            
+            document.getElementById('m-title').innerText = session.type === 'match' ? `Vs ${session.opp}` : 'Workout Libero';
+            document.getElementById('m-date').innerText = session.date;
+            
+            if(session.type === 'match') {
+                document.getElementById('m-match-view').classList.remove('d-none'); document.getElementById('m-workout-view').classList.add('d-none');
+                document.getElementById('m-score').innerText = session.score; document.getElementById('m-serve').innerText = session.details.maxServe;
+                document.getElementById('m-win').innerText = session.details.winners; document.getElementById('m-err').innerText = session.details.unforced;
+                document.getElementById('m-time').innerText = "45 Min"; 
+            } else {
+                document.getElementById('m-match-view').classList.add('d-none'); document.getElementById('m-workout-view').classList.remove('d-none');
+                document.getElementById('m-w-speed').innerText = session.details.speed; document.getElementById('m-w-spin').innerText = session.details.spin;
+                document.getElementById('m-w-fluid').innerText = session.details.fluid; document.getElementById('m-w-accel').innerText = session.details.accel;
             }
+            document.getElementById('session-modal').classList.add('visible');
         }
+        function closeModal() { document.getElementById('session-modal').classList.remove('visible'); }
 
-        function toggleHistory(element) {
-            if (element.classList.contains('expanded')) { element.classList.remove('expanded'); return; }
-            const allItems = document.querySelectorAll('.history-item');
-            allItems.forEach(item => item.classList.remove('expanded'));
-            element.classList.add('expanded');
-        }
-
-        // --- GESTIONE IDENTITÀ ---
-        const nameInput = document.getElementById('player-name-input');
-        const saveBtn = document.getElementById('save-name-btn');
-        const cardNameDisplay = document.getElementById('card-player-name');
-        const homeGreeting = document.getElementById('home-greeting');
-        const statusMsg = document.getElementById('name-status-msg');
-
-        const savedName = localStorage.getItem('bioTennisPlayerName');
-        if (savedName) { cardNameDisplay.innerText = savedName; homeGreeting.innerText = "Hi " + savedName; }
-
-        function checkNameChangeStatus() {
-            const lastChangeStr = localStorage.getItem('lastNameChangeDate');
-            if (lastChangeStr) {
-                const diffTime = Math.abs(new Date() - new Date(parseInt(lastChangeStr)));
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                if (diffDays <= 7) {
-                    const daysLeft = 8 - diffDays; 
-                    nameInput.disabled = true; saveBtn.disabled = true;
-                    statusMsg.innerHTML = `<span style="color: #ff4d4d;">Hai già cambiato il nome di recente. Potrai modificarlo nuovamente tra <strong>${daysLeft} giorni</strong>.</span>`;
-                    return false;
+        // === 7. ALTRE FUNZIONI (Tension, Bluetooth) ===
+        function startTensionTest() {
+            const btn = document.getElementById('btn-tension'), status = document.getElementById('tension-status'), result = document.getElementById('tension-result');
+            btn.style.display = 'none'; result.innerText = "--%"; result.style.color = "#fff";
+            let prepCount = 3; status.innerText = `Preparati... ${prepCount}`; status.style.color = "#ffaa00";
+            let prepInterval = setInterval(() => {
+                prepCount--;
+                if(prepCount > 0) { status.innerText = `Preparati... ${prepCount}`; } 
+                else {
+                    clearInterval(prepInterval); let count = 0; status.innerText = `Ascolto... ${count}/10`;
+                    let bounceInterval = setInterval(() => {
+                        count++; status.innerText = `Ascolto... ${count}/10`;
+                        if(count >= 10) { clearInterval(bounceInterval); status.innerText = "Analisi completata"; status.style.color = "var(--neon-main)"; result.innerText = "88%"; result.style.color = "var(--neon-main)"; setTimeout(() => { btn.style.display = 'block'; btn.innerText = "RIPETI"; }, 1000); }
+                    }, 400);
                 }
-            }
-            return true;
+            }, 1000);
         }
-        checkNameChangeStatus();
 
-        saveBtn.addEventListener('click', function() {
-            if (!checkNameChangeStatus()) return;
-            const val = nameInput.value.trim().toUpperCase();
-            if (val !== '') {
-                cardNameDisplay.innerText = val; homeGreeting.innerText = "Hi " + val;
-                localStorage.setItem('bioTennisPlayerName', val);
-                localStorage.setItem('lastNameChangeDate', Date.now().toString());
-                nameInput.value = ''; checkNameChangeStatus();
+    async function connettiXiaoBLE() {
+    const statusEl = document.getElementById('ble-status'), 
+          batteryEl = document.getElementById('ble-battery'), 
+          btnEl = document.getElementById('ble-btn'), 
+          panelEl = document.getElementById('ble-panel');
+    
+    try { 
+        statusEl.innerText = "🟡 Ricerca XIAO..."; 
+        
+        // Usiamo l'UUID completo e standardizzato della batteria
+        const device = await navigator.bluetooth.requestDevice({ 
+            filters: [{ name: 'XIAO TENNIS' }],
+            optionalServices: ['0000180f-0000-1000-8000-00805f9b34fb'] 
+        }); 
+        
+        statusEl.innerText = "🟡 Connessione...";
+        
+        const server = await device.gatt.connect();
+        
+        // Servizio Batteria standard
+        const service = await server.getPrimaryService('0000180f-0000-1000-8000-00805f9b34fb');
+        // Caratteristica Livello Batteria standard
+        const characteristic = await service.getCharacteristic('00002a19-0000-1000-8000-00805f9b34fb');
+        
+        const value = await characteristic.readValue();
+        const batteryPct = value.getUint8(0);
+
+        statusEl.innerText = "🟢 Collegato"; 
+        statusEl.style.color = "var(--neon-main)"; 
+        panelEl.classList.add('connected'); 
+        
+        batteryEl.innerText = batteryPct + "% 🔋"; 
+        batteryEl.style.display = "block"; 
+        btnEl.style.display = "none"; 
+
+        mostraNotifica("XIAO MG24 Connessa!");
+
+    } catch (e) { 
+        console.error(e);
+        statusEl.innerText = "🔴 Errore: " + e.message;
+    }
+}
+
+        function gestisciNotifiche(checkbox) { localStorage.setItem('tennisAppNotifiche', checkbox.checked); }
+
+        // === 8. CARTA E GRAFICO OVR ===
+        function calcolaOVR(stats) { return Math.floor((stats.vel + stats.pot + stats.drt + stats.res + stats.serv + stats.rov) / 6) || 0; }
+        function calcolaPlaystyle(stats) {
+            let s = [ { id: 'SERV', val: stats.serv }, { id: 'VEL', val: stats.vel }, { id: 'POT', val: stats.pot }, { id: 'DRT', val: stats.drt }, { id: 'RES', val: stats.res }, { id: 'ROV', val: stats.rov } ];
+            let tot = s.reduce((acc, curr) => acc + curr.val, 0);
+            if (tot === 0) return { nome: "IN FASE DI STUDIO 🔍", hex: "#a6a6a6", rgb: "166, 166, 166" };
+            s.sort((a, b) => b.val - a.val); let t1 = s[0].id, t2 = s[1].id;
+            if ((t1==='SERV'&&t2==='VEL')||(t1==='VEL'&&t2==='SERV')) return { nome: "SERVE & VOLLEY 🚀", hex: "#00e5ff", rgb: "0, 229, 255" };
+            if ((t1==='POT'&&t2==='DRT')||(t1==='DRT'&&t2==='POT')) return { nome: "CANNONIERE 💥", hex: "#e60000", rgb: "230, 0, 0" };
+            if ((t1==='RES'&&t2==='VEL')||(t1==='VEL'&&t2==='RES')) return { nome: "MARATONETA 🛡️", hex: "#1a75ff", rgb: "26, 117, 255" };
+            if (t1==='ROV') return { nome: "ROVESCIO LETALE 🗡️", hex: "#a64dff", rgb: "166, 77, 255" };
+            if (t1==='SERV'||t1==='POT') return { nome: "BOMBER 💣", hex: "#ff4500", rgb: "255, 69, 0" };
+            if (t1==='RES') return { nome: "MURO INVALICABILE 🧱", hex: "#00cc44", rgb: "0, 204, 68" };
+            return { nome: "ALL-AROUND 🌟", hex: "#d4af37", rgb: "212, 175, 55" };
+        }
+
+        function aggiornaInterfacciaCarta(customStats = null) {
+            let targetStats = customStats || statisticheGiocatore;
+            document.getElementById('stat-vel').innerText = targetStats.vel.toString().padStart(2, '0'); document.getElementById('stat-pot').innerText = targetStats.pot.toString().padStart(2, '0');
+            document.getElementById('stat-drt').innerText = targetStats.drt.toString().padStart(2, '0'); document.getElementById('stat-res').innerText = targetStats.res.toString().padStart(2, '0');
+            document.getElementById('stat-serv').innerText = targetStats.serv.toString().padStart(2, '0'); document.getElementById('stat-rov').innerText = targetStats.rov.toString().padStart(2, '0');
+            document.getElementById('card-ovr').innerText = calcolaOVR(targetStats).toString().padStart(2, '0');
+            
+            let ps = calcolaPlaystyle(targetStats); document.getElementById('playstyle-val').innerText = ps.nome; 
+            document.documentElement.style.setProperty('--theme-color', ps.hex); document.documentElement.style.setProperty('--theme-rgb', ps.rgb);
+            renderGrowthChart();
+        }
+
+        function renderGrowthChart() {
+            const svg = document.getElementById('growth-svg');
+            const dataToRender = [...historyData];
+            if(!customViewActive && dataToRender.length > 0) { dataToRender[dataToRender.length - 1].stats = statisticheGiocatore; }
+
+            let html = ''; let points = [];
+            let ovrs = dataToRender.map(d => calcolaOVR(d.stats));
+            let maxOvr = Math.max(10, ...ovrs); 
+            
+            dataToRender.forEach((d, i) => {
+                let x = 10;
+                if(dataToRender.length > 1) { x = 10 + (i / (dataToRender.length - 1)) * 80; } else { x = 50; }
+                let ovr = calcolaOVR(d.stats); let y = 40 - (ovr / maxOvr) * 30; points.push({x, y, label: d.mese, ovr: ovr});
+            });
+
+            html += `<line x1="10" y1="10" x2="90" y2="10" stroke="#333" stroke-width="0.5" stroke-dasharray="2,2"/><line x1="10" y1="25" x2="90" y2="25" stroke="#333" stroke-width="0.5" stroke-dasharray="2,2"/><line x1="10" y1="40" x2="90" y2="40" stroke="#333" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+
+            if(points.length > 1) {
+                let dArea = `M ${points[0].x},${points[0].y}`; points.forEach(p => dArea += ` L ${p.x},${p.y}`); dArea += ` L ${points[points.length-1].x},45 L ${points[0].x},45 Z`;
+                html += `<path d="${dArea}" fill="url(#areaGrad)" />`;
+                let dLine = `M ${points[0].x},${points[0].y}`; points.forEach(p => dLine += ` L ${p.x},${p.y}`);
+                html += `<path d="${dLine}" fill="none" stroke="var(--neon-main)" stroke-width="1.5" />`;
             }
-        });
 
-        initStats();
+            points.forEach((p, i) => {
+                let isOggi = (!customViewActive && i === points.length - 1); let isSelected = (customViewActive && i === customViewIndex);
+                let color = (isOggi || isSelected) ? 'var(--neon-main)' : '#555'; let r = (isOggi || isSelected) ? 3 : 1.5;
+
+                html += `<circle cx="${p.x}" cy="${p.y}" r="6" fill="transparent" cursor="pointer" onclick="viewHistory(${i})"/>`;
+                html += `<circle cx="${p.x}" cy="${p.y}" r="${r}" fill="${color}" stroke="#000" stroke-width="0.5" pointer-events="none"/>`;
+                let textColor = (isOggi || isSelected) ? 'var(--neon-main)' : '#aaa'; let fontWeight = (isOggi || isSelected) ? 'bold' : 'normal';
+                let label = (i === points.length - 1) ? "OGGI" : p.label;
+                html += `<text x="${p.x}" y="48" fill="${textColor}" font-size="4" text-anchor="middle" font-weight="${fontWeight}" pointer-events="none">${label}</text>`;
+            });
+            svg.innerHTML = html;
+        }
+
+        function viewHistory(index) {
+            const btnAttuali = document.getElementById('btn-attuali');
+            if (index === -1 || index === historyData.length - 1) {
+                customViewActive = false; customViewIndex = -1; btnAttuali.style.display = 'none';
+                aggiornaInterfacciaCarta(statisticheGiocatore);
+            } else {
+                customViewActive = true; customViewIndex = index; btnAttuali.style.display = 'block';
+                aggiornaInterfacciaCarta(historyData[index].stats);
+            }
         }
     </script>
 </body>
-</html> 
+</html>

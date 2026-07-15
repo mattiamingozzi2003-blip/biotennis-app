@@ -486,7 +486,12 @@
 
         const barWidth = 360, ball = document.getElementById('ball'), progressFill = document.getElementById('progress');
         const loaderScreen = document.getElementById('loader-screen'), appScreen = document.getElementById('app-screen'), topHeader = document.getElementById('top-header');
-        let startTime = null;
+      let startTime = null;
+// --- NUOVE VARIABILI BLUETOOTH & SESSIONE ---
+let sessioneAttiva = null; // Diventerà 'match' o 'workout'
+let colpiMatchTotali = 0;
+let sommaCaricoG = 0.0;
+
 
         let statisticheGiocatore = JSON.parse(localStorage.getItem('tb_stats')) || { vel: 0, pot: 0, drt: 0, res: 0, serv: 0, rov: 0 };
         let sessionData = JSON.parse(localStorage.getItem('tb_sessions')) || [];
@@ -732,52 +737,59 @@
 
         // === 5. GESTIONE TABELLONE E SESSIONI (No Pop-ups durante) ===
         function startCountdown(type) {
-            document.getElementById('pre-' + type).classList.add('d-none'); document.getElementById('history-' + type).classList.add('d-none');
-            const countEl = document.getElementById('countdown-' + type); countEl.classList.remove('d-none');
-            let count = 7; countEl.innerText = count;
-            let interval = setInterval(() => {
-                count--;
-                if(count > 0) { countEl.innerText = count; } 
-                else {
-                    clearInterval(interval); countEl.classList.add('d-none'); document.getElementById('active-' + type).classList.remove('d-none');
-                    if(type === 'workout') {
-                        document.getElementById('w-speed').innerText = '0'; document.getElementById('w-spin').innerText = '0';
-                        document.getElementById('w-fluid').innerText = '0'; document.getElementById('w-accel').innerText = '0';
-                        document.getElementById('heatmap-dot').style.opacity = '0';
-                        setTimeout(() => {
-                            document.getElementById('w-speed').innerText = Math.floor(Math.random() * 40 + 100); document.getElementById('w-spin').innerText = Math.floor(Math.random() * 1000 + 2000);
-                            document.getElementById('w-fluid').innerText = Math.floor(Math.random() * 30 + 60); document.getElementById('w-accel').innerText = (Math.random() * 2 + 2).toFixed(1);
-                            const dot = document.getElementById('heatmap-dot'); dot.style.opacity = '0.85'; dot.setAttribute('cx', Math.random()*20+40); dot.setAttribute('cy', Math.random()*20+50);
-                        }, 4000);
-                    }
-                }
-            }, 1000);
-        }
-
-        function endSession(type) {
-            document.getElementById('active-' + type).classList.add('d-none');
-            document.getElementById('pre-' + type).classList.remove('d-none');
-            document.getElementById('history-' + type).classList.remove('d-none');
+    document.getElementById('pre-' + type).classList.add('d-none'); document.getElementById('history-' + type).classList.add('d-none');
+    const countEl = document.getElementById('countdown-' + type); countEl.classList.remove('d-none');
+    let count = 7; countEl.innerText = count;
+    let interval = setInterval(() => {
+        count--;
+        if(count > 0) { countEl.innerText = count; }
+        else {
+            clearInterval(interval); countEl.classList.add('d-none'); document.getElementById('active-' + type).classList.remove('d-none');
             
-            const oggi = new Date(); const mesi = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
-            const dataStr = `${oggi.getDate().toString().padStart(2,'0')} ${mesi[oggi.getMonth()]} - ${oggi.getHours().toString().padStart(2,'0')}:${oggi.getMinutes().toString().padStart(2,'0')}`;
-            let newSession = { id: Date.now(), type: type, date: dataStr };
-
-            if(type === 'match') {
-                let msg = document.getElementById('no-match-msg'); if(msg) msg.remove();
-                const you = gamesYou, opp = gamesOpp, oppName = document.getElementById('opp-input').value || "Avversario";
-                newSession.opp = oppName; newSession.win = (you >= opp); newSession.score = `${Math.max(you,opp)}-${Math.min(you,opp)}`;
-                newSession.details = { maxServe: Math.floor(Math.random()*40+140)+' km/h', winners: Math.floor(Math.random()*20), unforced: Math.floor(Math.random()*15) };
-                
-                scoreIdxYou = 0; scoreIdxOpp = 0; gamesYou = 0; gamesOpp = 0; aggiornaUIpunteggio();
-            } else if(type === 'workout') {
-                let msg = document.getElementById('no-workout-msg'); if(msg) msg.remove();
-                newSession.details = { speed: document.getElementById('w-speed').innerText, spin: document.getElementById('w-spin').innerText, fluid: document.getElementById('w-fluid').innerText, accel: document.getElementById('w-accel').innerText };
+            // --- INIZIO REGISTRAZIONE DATI REALI ---
+            sessioneAttiva = type;
+            colpiMatchTotali = 0;
+            sommaCaricoG = 0.0;
+            
+            if(type === 'workout') {
+                document.getElementById('w-speed').innerText = '0'; 
+                document.getElementById('w-spin').innerText = '-';
+                document.getElementById('w-fluid').innerText = '-'; 
+                document.getElementById('w-accel').innerText = '0.0';
+                document.getElementById('heatmap-dot').style.opacity = '0';
             }
-
-            sessionData.unshift(newSession); saveStats(); renderHistoryLists(); 
-            elaboraDatiXIAOPerObiettivi(); // La carta cresce qui
+            mostraNotifica("Sessione Avviata! 🎾");
         }
+    }, 1000);
+}
+
+function endSession(type) {
+    document.getElementById('active-' + type).classList.add('d-none');
+    document.getElementById('pre-' + type).classList.remove('d-none');
+    document.getElementById('history-' + type).classList.remove('d-none');
+    
+    // --- FINE REGISTRAZIONE ---
+    sessioneAttiva = null;
+    mostraNotifica("Sessione Terminata e Salvata!");
+
+    const oggi = new Date(); const mesi = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
+    const dataStr = `${oggi.getDate().toString().padStart(2,'0')} ${mesi[oggi.getMonth()]} - ${oggi.getHours().toString().padStart(2,'0')}:${oggi.getMinutes().toString().padStart(2,'0')}`;
+    let newSession = { id: Date.now(), type: type, date: dataStr };
+    
+    if(type === 'match') {
+        let msg = document.getElementById('no-match-msg'); if(msg) msg.remove();
+        const you = gamesYou, opp = gamesOpp, oppName = document.getElementById('opp-input').value || "Avversario";
+        newSession.opp = oppName; newSession.win = (you >= opp); newSession.score = `${Math.max(you,opp)}-${Math.min(you,opp)}`;
+        // Salviamo statistiche match (potresti espanderle con i dati reali)
+        newSession.details = { maxServe: "TBD", winners: colpiMatchTotali, unforced: Math.floor(sommaCaricoG) };
+        scoreIdxYou = 0; scoreIdxOpp = 0; gamesYou = 0; gamesOpp = 0; aggiornaUipunteggio();
+    } else if(type === 'workout') {
+        let msg = document.getElementById('no-workout-msg'); if(msg) msg.remove();
+        newSession.details = { speed: document.getElementById('w-speed').innerText, spin: document.getElementById('w-spin').innerText, fluid: document.getElementById('w-fluid').innerText, accel: document.getElementById('w-accel').innerText };
+    }
+    sessionData.unshift(newSession); saveStats(); renderHistoryLists();
+    elaboraDatiXIAOPerObiettivi(); // Fa crescere gli obiettivi
+}
 
         function aggiornaUIpunteggio() {
             document.getElementById('pt-you').innerText = valoriPunti[scoreIdxYou];
@@ -853,49 +865,105 @@
             }, 1000);
         }
 
-    async function connettiXiaoBLE() {
+async function connettiXiaoBLE() {
     const statusEl = document.getElementById('ble-status'), 
           batteryEl = document.getElementById('ble-battery'), 
           btnEl = document.getElementById('ble-btn'), 
           panelEl = document.getElementById('ble-panel');
     
+    // UUID (Rigorosamente minuscoli, usiamo il canale a 4 Byte per la telemetria)
+    const TENNIS_SERVICE_UUID = '19b10000-e8f2-537e-4f6c-d104768a1214';
+    const TENNIS_DATA_UUID = '19b10002-e8f2-537e-4f6c-d104768a1214'; 
+    const BATTERY_SERVICE_UUID = '0000180f-0000-1000-8000-00805f9b34fb';
+    const BATTERY_LEVEL_UUID = '00002a19-0000-1000-8000-00805f9b34fb';
+    
     try { 
         statusEl.innerText = "🟡 Ricerca XIAO..."; 
-        
-        // Usiamo l'UUID completo e standardizzato della batteria
         const device = await navigator.bluetooth.requestDevice({ 
             filters: [{ name: 'XIAO TENNIS' }],
-            optionalServices: ['0000180f-0000-1000-8000-00805f9b34fb'] 
+            optionalServices: [BATTERY_SERVICE_UUID, TENNIS_SERVICE_UUID] 
         }); 
         
-        statusEl.innerText = "🟡 Connessione...";
-        
+        statusEl.innerText = "🟡 Connessione in corso...";
         const server = await device.gatt.connect();
-        
-        // Servizio Batteria standard
-        const service = await server.getPrimaryService('0000180f-0000-1000-8000-00805f9b34fb');
-        // Caratteristica Livello Batteria standard
-        const characteristic = await service.getCharacteristic('00002a19-0000-1000-8000-00805f9b34fb');
-        
-        const value = await characteristic.readValue();
-        const batteryPct = value.getUint8(0);
 
-        statusEl.innerText = "🟢 Collegato"; 
+        // --- 1. CORSIA BATTERIA REALE ---
+        const batteryService = await server.getPrimaryService(BATTERY_SERVICE_UUID);
+        const batteryChar = await batteryService.getCharacteristic(BATTERY_LEVEL_UUID);
+        const batValue = await batteryChar.readValue();
+        if(batteryEl) {
+            batteryEl.innerText = batValue.getUint8(0) + "% 🔋"; 
+            batteryEl.style.display = "block";
+        }
+
+        // --- 2. CORSIA TELEMETRIA TENNIS (4 BYTE) ---
+        const tennisService = await server.getPrimaryService(TENNIS_SERVICE_UUID);
+        const swingChar = await tennisService.getCharacteristic(TENNIS_DATA_UUID);
+        
+        await swingChar.startNotifications();
+        
+        swingChar.addEventListener('characteristicvaluechanged', (event) => {
+            const value = event.target.value;
+            
+            // Lettura e decodifica dei 4 Byte
+            const velocita = value.getUint8(0);
+            const codiceEffetto = value.getUint8(1);
+            const codiceMovimento = value.getUint8(2);
+            const forzaG = value.getUint8(3) / 10; 
+            
+            let strEffetto = "PIATTO";
+            if (codiceEffetto === 2) strEffetto = "TOPSPIN";
+            if (codiceEffetto === 3) strEffetto = "SLICE";
+
+            let strMovimento = "DRITTO";
+            if (codiceMovimento === 2) strMovimento = "ROVESCIO";
+            if (codiceMovimento === 3) strMovimento = "SERVIZIO";
+
+            // SE SEI IN MODALITÀ WORKOUT: Aggiorna la tua fantastica Dashboard!
+            if (sessioneAttiva === 'workout') {
+                document.getElementById('w-speed').innerText = velocita;
+                document.getElementById('w-spin').innerText = strEffetto;
+                document.getElementById('w-fluid').innerText = strMovimento;
+                document.getElementById('w-accel').innerText = forzaG.toFixed(1);
+
+                // Muove il pallino sulla racchetta per simulare l'impatto visivo
+                const dot = document.getElementById('heatmap-dot');
+                if (dot) {
+                    dot.style.opacity = '0.85';
+                    dot.setAttribute('cx', Math.random() * 40 + 30);
+                    dot.setAttribute('cy', Math.random() * 40 + 40);
+                }
+            } 
+            // SE SEI IN MODALITÀ MATCH
+            else if (sessioneAttiva === 'match') {
+                colpiMatchTotali++;
+                sommaCaricoG += forzaG;
+                // Mostra un popup rapido col colpo eseguito senza distrarre dal tabellone
+                mostraNotifica(`🎾 ${strMovimento} a ${velocita} km/h`);
+            } 
+            // SE SEI NEL MENU (Solo Test)
+            else {
+                mostraNotifica(`🎾 TEST: ${strMovimento} ${strEffetto} a ${velocita} km/h`);
+            }
+
+            // Flash grafico del pannello connessione
+            if(panelEl) {
+                panelEl.style.boxShadow = "0 0 40px var(--neon-main)";
+                setTimeout(() => { panelEl.style.boxShadow = "none"; }, 300);
+            }
+        });
+
+        statusEl.innerText = "🟢 Collegato PRO"; 
         statusEl.style.color = "var(--neon-main)"; 
-        panelEl.classList.add('connected'); 
-        
-        batteryEl.innerText = batteryPct + "% 🔋"; 
-        batteryEl.style.display = "block"; 
-        btnEl.style.display = "none"; 
-
-        mostraNotifica("XIAO MG24 Connessa!");
+        if(panelEl) panelEl.classList.add('connected'); 
+        if(btnEl) btnEl.style.display = "none"; 
+        mostraNotifica("Polsino Connesso! Avvia un Workout.");
 
     } catch (e) { 
         console.error(e);
         statusEl.innerText = "🔴 Errore: " + e.message;
     }
 }
-
         function gestisciNotifiche(checkbox) { localStorage.setItem('tennisAppNotifiche', checkbox.checked); }
 
         // === 8. CARTA E GRAFICO OVR ===
